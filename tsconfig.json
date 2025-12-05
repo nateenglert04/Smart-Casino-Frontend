@@ -14,10 +14,7 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    // Add these if missing:
-    "forceConsistentCasingInFileNames": true, // This helps!
-    "allowSyntheticDefaultImports": true
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]

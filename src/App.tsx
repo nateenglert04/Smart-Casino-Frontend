@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import reactLogo from './assets/react.svg';
 import viteLogo from '/vite.svg';
 import './App.css';
-import { pokerApi, userApi } from './api';
+import { userApi } from './api';
 import type { User, Card, PokerHand, LoginCredentials } from './types';
+import axios from 'axios';
 
 function App() {
     const [count, setCount] = useState<number>(0);
@@ -20,11 +21,15 @@ function App() {
 
     const checkBackendStatus = async (): Promise<void> => {
         try {
-            const response = await fetch('http://localhost:8080/actuator/health');
+            // Use relative path (will be proxied to backend)
+            const response = await fetch('/api/test/health');
+            const text = await response.text();
+            console.log('Backend response:', text);
+
             if (response.ok) {
                 setBackendStatus('Connected ✅');
             } else {
-                setBackendStatus(`Error ${response.status}`);
+                setBackendStatus(`Error ${response.status}: ${text}`);
             }
         } catch (err) {
             setBackendStatus('Not connected ❌');
@@ -36,7 +41,7 @@ function App() {
         setLoading(true);
         setError(null);
         try {
-            const sampleCards: Card[] = [
+            const sampleCards = [
                 { suit: 'HEARTS', rank: '10' },
                 { suit: 'HEARTS', rank: 'JACK' },
                 { suit: 'HEARTS', rank: 'QUEEN' },
@@ -45,9 +50,16 @@ function App() {
             ];
 
             console.log('Sending cards:', sampleCards);
-            const result: PokerHand = await pokerApi.evaluateHand(sampleCards);
-            console.log('Received result:', result);
-            setPokerHand(result);
+
+            // Use relative path through proxy
+            const response = await axios.post('/api/poker/evaluate', sampleCards, {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('Received result:', response.data);
+            setPokerHand(response.data);
         } catch (err: unknown) {
             console.error('Error evaluating hand:', err);
             if (err instanceof Error) {
@@ -72,12 +84,17 @@ function App() {
             const authResponse = await userApi.login(credentials);
             console.log('Login response:', authResponse);
 
-            // Set user from the response
-            setUser({
-                username: authResponse.user.username,
-                balance: authResponse.user.balance,
-                token: authResponse.token
-            });
+            // Check if response has expected structure
+            if (authResponse && authResponse.user) {
+                setUser({
+                    id: authResponse.user.id,
+                    username: authResponse.user.username,
+                    balance: authResponse.user.balance,
+                    token: authResponse.token
+                });
+            } else {
+                setError('Invalid response structure from server');
+            }
         } catch (err: unknown) {
             console.error('Login failed:', err);
             if (err instanceof Error) {
