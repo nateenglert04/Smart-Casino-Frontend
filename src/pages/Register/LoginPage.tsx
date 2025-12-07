@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle} from 'lucide-react';
 
 // Shadcn UI Imports - Adjust paths based on your folder structure
 import { Button } from '../../components/ui/button';
@@ -152,7 +152,7 @@ const LoginPage = () => {
             <div className="text-center text-sm text-muted-foreground">
               Don&apos;t have a seat at the table?{' '}
               <Link 
-                to="/create-account" 
+                to="/createAccount" 
                 className="font-semibold text-primary hover:underline underline-offset-4"
               >
                 Create Account
