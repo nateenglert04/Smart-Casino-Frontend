@@ -27,20 +27,7 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Validation Requirements
-  const requirements = {
-    usernameMin: 3,
-    usernameMax: 20,
-    passMin: 8,
-    passSpecial: /[!@#$%^&*(),.?":{}|<>]/,
-  };
-
-  // Helper to check validation status for UI feedback
-  const isValid = {
-    usernameLength: formData.username.length >= requirements.usernameMin && formData.username.length <= requirements.usernameMax,
-    passLength: formData.password.length >= requirements.passMin,
-    passSpecial: requirements.passSpecial.test(formData.password),
-  };
+  // Implement Auth Context here when built
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -51,12 +38,6 @@ const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    // Final Validation Check
-    if (!isValid.usernameLength || !isValid.passLength || !isValid.passSpecial) {
-      setError('Please meet all field requirements below.');
-      return;
-    }
 
     try {
       setIsLoading(true);
@@ -120,18 +101,10 @@ const LoginPage = () => {
                   className="pl-9"
                   value={formData.username}
                   onChange={handleInputChange}
-                  maxLength={requirements.usernameMax}
+                  maxLength={20}
                   autoComplete="username"
                 />
               </div>
-              {/* Username requirements text */}
-              <p className={`text-xs transition-colors ${
-                  formData.username.length > 0 
-                    ? (isValid.usernameLength ? 'text-green-600 dark:text-green-400' : 'text-destructive') 
-                    : 'text-muted-foreground'
-                }`}>
-                Must be between {requirements.usernameMin} and {requirements.usernameMax} characters.
-              </p>
             </div>
 
             {/* Password Field */}
@@ -148,6 +121,7 @@ const LoginPage = () => {
                   className="pl-9 pr-9"
                   value={formData.password}
                   onChange={handleInputChange}
+                  maxLength={50}
                   autoComplete="current-password"
                 />
                 <button
@@ -161,20 +135,6 @@ const LoginPage = () => {
                     <Eye className="h-4 w-4" />
                   )}
                 </button>
-              </div>
-
-              {/* Password Live Validation Checklist */}
-              <div className="space-y-1 mt-2 p-3 bg-muted/50 rounded-md border border-border/50">
-                <p className="text-xs font-medium mb-2 text-muted-foreground">Password Requirements:</p>
-                
-                <RequirementItem 
-                  met={isValid.passLength} 
-                  text={`At least ${requirements.passMin} characters long`} 
-                />
-                <RequirementItem 
-                  met={isValid.passSpecial} 
-                  text="Contains at least one special character (!@#...)" 
-                />
               </div>
             </div>
 
@@ -201,17 +161,6 @@ const LoginPage = () => {
           </CardFooter>
         </form>
       </Card>
-    </div>
-  );
-}
-
-function RequirementItem({ met, text }: { met: boolean; text: string }) {
-  return (
-    <div className={`flex items-center gap-2 text-xs transition-colors duration-300 ${
-      met ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'
-    }`}>
-      <CheckCircle2 className={`h-3 w-3 ${met ? 'opacity-100' : 'opacity-30'}`} />
-      <span>{text}</span>
     </div>
   );
 }
