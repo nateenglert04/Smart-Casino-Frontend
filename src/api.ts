@@ -1,3 +1,4 @@
+// api.ts
 import axios, {
     type AxiosInstance,
     type AxiosResponse,
@@ -13,7 +14,9 @@ import type {
     AuthResponse,
     RegisterResponse,
     User,
-    ApiError
+    ApiError,
+    QRCodeResponse,
+    QRLoginCredentials
 } from './types';
 
 // Use Vite env var with safe access
@@ -103,6 +106,39 @@ export const userApi = {
             return response.data;
         } catch (error) {
             console.error('Login failed:', error);
+            throw error;
+        }
+
+    },
+
+    // Generate QR code for logged-in user using Axios
+    generateQRCode: async (): Promise<QRCodeResponse> => {
+        try {
+            console.log('Generating QR code...');
+            const response = await api.get<QRCodeResponse>('/auth/qr/generate');
+            console.log('QR code generated:', response.data);
+            return response.data;
+        } catch (error) {
+            console.error('Failed to generate QR code:', error);
+            throw error;
+        }
+    },
+
+    // Login with QR token using Axios
+    loginWithQR: async (qrCredentials: QRLoginCredentials): Promise<AuthResponse> => {
+        try {
+            console.log('Attempting QR login with token:', qrCredentials.token);
+            const response = await api.post<AuthResponse>('/auth/qr/login', qrCredentials);
+            console.log('QR login response:', response.data);
+
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                console.log('QR login token saved to localStorage');
+            }
+
+            return response.data;
+        } catch (error) {
+            console.error('QR login failed:', error);
             throw error;
         }
     },

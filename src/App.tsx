@@ -1,260 +1,529 @@
-import { useState, useEffect } from 'react';
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
-import './App.css';
+// App.tsx
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { userApi } from './api';
-import type { User, Card, PokerHand, LoginCredentials } from './types';
-import axios from 'axios';
+import type { User, Theme } from './types';
+import LoginScreen from './components/LoginScreen';
+import CreateAccountScreen from './components/CreateAccountScreen';
+import MainMenuScreen from './components/MainMenuScreen';
+import GameLobbyScreen from './components/GameLobbyScreen';
+import BlackjackGame from './components/BlackjackGame';
+import PokerGame from './components/PokerGame';
+import LessonPanel from './components/LessonPanel';
+import ForgotPasswordScreen from './components/ForgetPasswordScreen';
+import QRLoginScreen from './components/QRLoginScreen';
+import './App.css';
+
+// Error Boundary Component
+class GameErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+    constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { hasError: false };
+    }
+
+    static getDerivedStateFromError() {
+        return { hasError: true };
+    }
+
+    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+        console.error('Game Error:', error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    minHeight: '100vh',
+                    backgroundColor: '#121212',
+                    color: 'white',
+                    textAlign: 'center',
+                    padding: '20px'
+                }}>
+                    <div>
+                        <h1 style={{ fontSize: '24px', marginBottom: '20px' }}>Game Crashed</h1>
+                        <p style={{ marginBottom: '20px' }}>Something went wrong. Please restart the game.</p>
+                        <button
+                            onClick={() => window.location.reload()}
+                            style={{
+                                backgroundColor: '#DC143C',
+                                color: 'white',
+                                border: 'none',
+                                padding: '12px 24px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            Restart Game
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}
+
+type Screen =
+    | 'LOGIN'
+    | 'CREATE_ACCOUNT'
+    | 'FORGOT_PASSWORD'
+    | 'QR_LOGIN'
+    | 'MAIN_MENU'
+    | 'GAME_LOBBY'
+    | 'BLACKJACK'
+    | 'POKER'
+    | 'LESSONS';
 
 function App() {
-    const [count, setCount] = useState<number>(0);
-    const [pokerHand, setPokerHand] = useState<PokerHand | null>(null);
-    const [loading, setLoading] = useState<boolean>(false);
+    const [currentScreen, setCurrentScreen] = useState<Screen>('LOGIN');
     const [user, setUser] = useState<User | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [backendStatus, setBackendStatus] = useState<string>('Checking...');
+    const [isBackendConnected, setIsBackendConnected] = useState<boolean>(false);
 
-    // Test backend connection on load
-    useEffect(() => {
-        checkBackendStatus();
-    }, []);
+    // Memoize theme so children won't re-render unnecessarily if they're memoized
+    const theme: Theme = useMemo(
+        () => ({
+            bgDark: '#121212',
+            panelBg: '#282828',
+            cardBg: '#FAFAFA',
+            textColor: '#FFFFFF',
+            accent: '#3399FF',
+            positive: '#4CAF50',
+            negative: '#DC143C',
+            muted: '#A9A9A9',
+        }),
+        []
+    );
 
-    const checkBackendStatus = async (): Promise<void> => {
+    // Ref to hold interval id so we can pause/resume polling
+    const intervalRef = useRef<number | null>(null);
+
+    const checkBackendStatus = useCallback(async (): Promise<void> => {
         try {
-            // Use relative path (will be proxied to backend)
-            const response = await fetch('/api/test/health');
-            const text = await response.text();
-            console.log('Backend response:', text);
+            const controller = new AbortController();
+            const timeoutId = window.setTimeout(() => controller.abort(), 5000);
 
-            if (response.ok) {
-                setBackendStatus('Connected ✅');
-            } else {
-                setBackendStatus(`Error ${response.status}: ${text}`);
-            }
-        } catch (err) {
-            setBackendStatus('Not connected ❌');
-            console.error('Backend connection failed:', err);
-        }
-    };
-
-    const evaluateSampleHand = async (): Promise<void> => {
-        setLoading(true);
-        setError(null);
-        try {
-            const sampleCards = [
-                { suit: 'HEARTS', rank: '10' },
-                { suit: 'HEARTS', rank: 'JACK' },
-                { suit: 'HEARTS', rank: 'QUEEN' },
-                { suit: 'HEARTS', rank: 'KING' },
-                { suit: 'HEARTS', rank: 'ACE' }
-            ];
-
-            console.log('Sending cards:', sampleCards);
-
-            // Use relative path through proxy
-            const response = await axios.post('/api/poker/evaluate', sampleCards, {
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+            const response = await fetch('/api/test/health', {
+                signal: controller.signal,
             });
 
-            console.log('Received result:', response.data);
-            setPokerHand(response.data);
-        } catch (err: unknown) {
-            console.error('Error evaluating hand:', err);
-            if (err instanceof Error) {
-                setError(`Failed to evaluate hand: ${err.message}`);
+            clearTimeout(timeoutId);
+
+            const text = await response.text();
+            if (response.ok) {
+                setBackendStatus('Connected ✅');
+                setIsBackendConnected(true);
             } else {
-                setError('Failed to evaluate hand: Unknown error');
+                setBackendStatus(`Error ${response.status}: ${text}`);
+                setIsBackendConnected(false);
             }
+        } catch (err) {
+            // Type guard to check if it's an AbortError
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                setBackendStatus('Request timed out ❌');
+            } else if (err instanceof Error) {
+                setBackendStatus('Not connected ❌');
+                console.error('Backend connection failed:', err.message);
+            } else {
+                // fallback for unknown error type
+                setBackendStatus('Unknown error ❌');
+                console.error('Backend connection failed:', err);
+            }
+
+            setIsBackendConnected(false);
+        }
+    }, []);
+
+    const startPolling = useCallback(() => {
+        // Don't double-start
+        if (intervalRef.current !== null) return;
+        // setInterval returns number in browsers
+        intervalRef.current = window.setInterval(() => {
+            checkBackendStatus();
+        }, 30_000);
+    }, [checkBackendStatus]);
+
+    const stopPolling = useCallback(() => {
+        if (intervalRef.current !== null) {
+            window.clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
+    }, []);
+
+    useEffect(() => {
+        // initial check
+        checkBackendStatus();
+        startPolling();
+
+        // Pause polling when page is hidden to save resources; resume when visible
+        const onVisibilityChange = () => {
+            if (document.hidden) {
+                stopPolling();
+            } else {
+                checkBackendStatus();
+                startPolling();
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        // Load user from localStorage on mount
+        const savedUser = localStorage.getItem('smartCasinoUser');
+        if (savedUser) {
+            try {
+                const parsedUser = JSON.parse(savedUser);
+                setUser(parsedUser);
+                setCurrentScreen('MAIN_MENU');
+            } catch (err) {
+                console.error('Failed to parse saved user:', err);
+                localStorage.removeItem('smartCasinoUser');
+            }
+        }
+
+        // Load game state from localStorage
+        const savedGameState = localStorage.getItem('blackjackState');
+        if (savedGameState) {
+            console.log('Saved game state available:', savedGameState);
+        }
+
+        return () => {
+            stopPolling();
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+        };
+    }, [checkBackendStatus, startPolling, stopPolling]);
+
+    // Save user to localStorage when it changes
+    useEffect(() => {
+        if (user) {
+            localStorage.setItem('smartCasinoUser', JSON.stringify(user));
+        } else {
+            localStorage.removeItem('smartCasinoUser');
+        }
+    }, [user]);
+
+    // Auto-clear error after 5 seconds
+    useEffect(() => {
+        if (error) {
+            const timer = window.setTimeout(() => {
+                setError(null);
+            }, 5000);
+            return () => window.clearTimeout(timer);
+        }
+    }, [error]);
+
+    /* ============================================================
+       Screen transitions (memoized)
+    ============================================================ */
+    const showLoginScreen = useCallback(() => {
+        setCurrentScreen('LOGIN');
+        setError(null);
+    }, []);
+
+    const showCreateAccountScreen = useCallback(() => {
+        setCurrentScreen('CREATE_ACCOUNT');
+        setError(null);
+    }, []);
+
+    const showForgotPasswordScreen = useCallback(() => {
+        setCurrentScreen('FORGOT_PASSWORD');
+        setError(null);
+    }, []);
+
+    const showQRLoginScreen = useCallback(() => {
+        setCurrentScreen('QR_LOGIN');
+        setError(null);
+    }, []);
+
+    const showMainMenu = useCallback((userData: User) => {
+        setUser(userData);
+        setCurrentScreen('MAIN_MENU');
+        setError(null);
+    }, []);
+
+    const showLessons = useCallback(() => {
+        setCurrentScreen('LESSONS');
+        setError(null);
+    }, []);
+    useCallback(() => {
+        setCurrentScreen('GAME_LOBBY');
+        setError(null);
+    }, []);
+    const playBlackjack = useCallback(() => {
+        setCurrentScreen('BLACKJACK');
+        setError(null);
+    }, []);
+
+    const playPoker = useCallback(() => {
+        setCurrentScreen('POKER');
+        setError(null);
+    }, []);
+
+    const returnToMainMenu = useCallback(() => {
+        setCurrentScreen('MAIN_MENU');
+        setError(null);
+    }, []);
+
+    // Make logout async and handle errors
+    const logout = useCallback(async () => {
+        try {
+            await userApi.logout?.();
+        } catch (err) {
+            // non-blocking: still clear local user state so UI returns to login
+            setError('Logout failed (local state cleared).');
+            console.error('Logout failed:', err);
         } finally {
-            setLoading(false);
+            setUser(null);
+            setCurrentScreen('LOGIN');
+            setError(null);
+            localStorage.removeItem('smartCasinoUser');
         }
-    };
+    }, []);
 
-    const handleLogin = async (): Promise<void> => {
-        setError(null);
-        try {
-            const credentials: LoginCredentials = {
-                username: 'demoUser',
-                password: 'password123'
-            };
-
-            console.log('Logging in with:', credentials);
-            const authResponse = await userApi.login(credentials);
-            console.log('Login response:', authResponse);
-
-            // Check if response has expected structure
-            if (authResponse && authResponse.user) {
-                setUser({
-                    id: authResponse.user.id,
-                    username: authResponse.user.username,
-                    balance: authResponse.user.balance,
-                    token: authResponse.token
-                });
-            } else {
-                setError('Invalid response structure from server');
-            }
-        } catch (err: unknown) {
-            console.error('Login failed:', err);
-            if (err instanceof Error) {
-                setError(`Login failed: ${err.message}`);
-            } else {
-                setError('Login failed: Unknown error');
-            }
-        }
-    };
-
-    const handleRegister = async (): Promise<void> => {
-        setError(null);
-        try {
-            const userData = {
-                username: `testUser${Date.now()}`,
-                password: 'test123',
-                enableQR: false
-            };
-
-            console.log('Registering user:', userData);
-            await userApi.register(userData);
-            console.log('Registration successful');
-
-            // Try login with same credentials
-            await handleLogin();
-        } catch (err: unknown) {
-            console.error('Registration failed:', err);
-            if (err instanceof Error) {
-                setError(`Registration failed: ${err.message}`);
-            } else {
-                setError('Registration failed: Unknown error');
-            }
-        }
-    };
-
-    const handleLogout = (): void => {
-        userApi.logout();
-        setUser(null);
-        setPokerHand(null);
-        setError(null);
-    };
+    /* ============================================================
+       Sub-component: backend indicator (keyboard + screen-reader friendly)
+    ============================================================ */
+    const BackendStatusIndicator = (
+        <button
+            type="button"
+            className="backend-status-indicator"
+            onClick={() => checkBackendStatus()}
+            title="Check backend connection"
+            aria-pressed={isBackendConnected}
+            style={{
+                position: 'fixed',
+                top: 10,
+                right: 10,
+                backgroundColor: isBackendConnected ? theme.positive : theme.negative,
+                color: 'white',
+                padding: '5px 10px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                border: 'none',
+                cursor: 'pointer',
+            }}
+        >
+            <span>{backendStatus}</span>
+            {!isBackendConnected && (
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        checkBackendStatus();
+                    }}
+                    className="retry-button"
+                    aria-label="Retry connection"
+                    style={{
+                        background: 'rgba(255,255,255,0.12)',
+                        border: 'none',
+                        color: 'white',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        padding: '4px 6px',
+                        borderRadius: '4px',
+                    }}
+                >
+                    ⟳ Retry
+                </button>
+            )}
+        </button>
+    );
 
     return (
-        <>
-            <div>
-                <a href="https://vite.dev" target="_blank" rel="noopener noreferrer">
-                    <img src={viteLogo} className="logo" alt="Vite logo" />
-                </a>
-                <a href="https://react.dev" target="_blank" rel="noopener noreferrer">
-                    <img src={reactLogo} className="logo react" alt="React logo" />
-                </a>
-            </div>
+        <GameErrorBoundary>
+            <div
+                className="app"
+                style={{
+                    backgroundColor: theme.bgDark,
+                    color: theme.textColor,
+                    minHeight: '100vh',
+                    width: '100%',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    position: 'relative',
+                }}
+            >
+                {BackendStatusIndicator}
 
-            <h1>Smart Casino - Poker</h1>
-
-            {/* Backend Status */}
-            <div className="card">
-                <p><strong>Backend Status:</strong> {backendStatus}</p>
-                <button onClick={checkBackendStatus}>Refresh Status</button>
-            </div>
-
-            {/* Error Display */}
-            {error && (
-                <div className="card" style={{ background: '#ff6b6b', color: 'white' }}>
-                    <strong>Error:</strong> {error}
-                </div>
-            )}
-
-            {/* User Section */}
-            <div className="card">
-                {user ? (
-                    <div>
-                        <p>Welcome, {user.username || 'Player'}!</p>
-                        <p>Balance: ${user.balance?.toFixed(2) || '0.00'}</p>
-                        <button onClick={handleLogout}>
-                            Logout
-                        </button>
-                    </div>
-                ) : (
-                    <div>
-                        <button onClick={handleLogin} style={{ marginRight: '10px' }}>
-                            Demo Login
-                        </button>
-                        <button onClick={handleRegister}>
-                            Register Test User
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            {/* Poker Hand Evaluation */}
-            <div className="card">
-                <button onClick={evaluateSampleHand} disabled={loading}>
-                    {loading ? 'Evaluating...' : 'Evaluate Sample Royal Flush'}
-                </button>
-
-                {pokerHand && (
-                    <div style={{ marginTop: '20px' }}>
-                        <h3>Hand Result:</h3>
-                        <p><strong>Hand Type:</strong> {pokerHand.handType}</p>
-                        <p><strong>Score:</strong> {pokerHand.score}</p>
-                        <div>
-                            <strong>Cards:</strong>
-                            <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
-                                {pokerHand.cards.map((card: Card, index: number) => (
-                                    <div
-                                        key={`${card.suit}-${card.rank}-${index}`}
-                                        style={{
-                                            padding: '10px',
-                                            border: '1px solid #646cff',
-                                            borderRadius: '5px',
-                                            background: 'white',
-                                            color: card.suit === 'HEARTS' || card.suit === 'DIAMONDS' ? 'red' : 'black'
-                                        }}
-                                    >
-                                        {card.rank} of {card.suit}
-                                    </div>
-                                ))}
+                {/* Error Display -- accessible */}
+                {error && (
+                    <div
+                        role="alert"
+                        aria-live="assertive"
+                        style={{
+                            position: 'fixed',
+                            top: 50,
+                            right: 20,
+                            backgroundColor: theme.negative,
+                            color: 'white',
+                            padding: '15px 20px',
+                            borderRadius: '8px',
+                            zIndex: 1000,
+                            maxWidth: '420px',
+                            boxShadow: '0 4px 12px rgba(220, 20, 60, 0.3)',
+                            animation: 'slideIn 0.3s ease-out',
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <span style={{ fontSize: '18px' }}>⚠️</span>
+                                <div>
+                                    <strong style={{ fontSize: '14px' }}>Error</strong>
+                                    <div style={{ fontSize: '13px', marginTop: '4px', opacity: 0.95 }}>{error}</div>
+                                </div>
                             </div>
+                            <button
+                                onClick={() => setError(null)}
+                                aria-label="Dismiss error"
+                                style={{
+                                    marginLeft: '15px',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: 'white',
+                                    cursor: 'pointer',
+                                    fontSize: '20px',
+                                    padding: '0',
+                                    width: '28px',
+                                    height: '28px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    borderRadius: '50%',
+                                    transition: 'background-color 0.2s',
+                                }}
+                            >
+                                ×
+                            </button>
                         </div>
                     </div>
                 )}
-            </div>
 
-            {/* Debug Information */}
-            <div className="card">
-                <h3>Debug Information</h3>
-                <div style={{ textAlign: 'left', fontSize: '12px' }}>
-                    <p><strong>LocalStorage Token:</strong> {localStorage.getItem('token') || 'None'}</p>
-                    <p><strong>API Base URL:</strong> {import.meta.env.VITE_API_URL || 'http://localhost:8080/api'}</p>
-                    <button onClick={() => {
-                        console.log('Current state:', {
-                            user,
-                            pokerHand,
-                            error,
-                            backendStatus
-                        });
-                        console.log('LocalStorage:', {
-                            token: localStorage.getItem('token')
-                        });
-                    }}>
-                        Log State to Console
-                    </button>
+                {/* Main Content Area */}
+                <div className="app-content" style={{ position: 'relative', zIndex: 1 }}>
+                    {currentScreen === 'LOGIN' && (
+                        <LoginScreen
+                            onLogin={showMainMenu}
+                            onCreateAccount={showCreateAccountScreen}
+                            onForgotPassword={showForgotPasswordScreen}
+                            onQRLogin={showQRLoginScreen}
+                            theme={theme}
+                            onError={setError}
+                        />
+                    )}
+
+                    {currentScreen === 'CREATE_ACCOUNT' && (
+                        <CreateAccountScreen
+                            onBack={showLoginScreen}
+                            onLogin={showMainMenu}
+                            theme={theme}
+                            onError={setError}
+                        />
+                    )}
+
+                    {currentScreen === 'FORGOT_PASSWORD' && (
+                        <ForgotPasswordScreen onBack={showLoginScreen} theme={theme} onError={setError} />
+                    )}
+
+                    {currentScreen === 'QR_LOGIN' && (
+                        <QRLoginScreen onBack={showLoginScreen} onLogin={showMainMenu} theme={theme} onError={setError} />
+                    )}
+
+                    {currentScreen === 'MAIN_MENU' && user && (
+                        <MainMenuScreen
+                            user={user}
+                            onPlayBlackjack={playBlackjack}
+                            onPlayPoker={playPoker}
+                            onShowLessons={showLessons}
+                            onLogout={logout}
+                            theme={theme}
+                        />
+                    )}
+
+                    {currentScreen === 'GAME_LOBBY' && user && (
+                        <GameLobbyScreen
+                            user={user}
+                            onPlayBlackjack={playBlackjack}
+                            onPlayPoker={playPoker}
+                            onBack={returnToMainMenu}
+                            theme={theme}
+                        />
+                    )}
+
+                    {currentScreen === 'LESSONS' && user && (
+                        <LessonPanel user={user} onBack={returnToMainMenu} theme={theme} onError={setError} />
+                    )}
+
+                    {currentScreen === 'BLACKJACK' && user && (
+                        <BlackjackGame user={user} onBack={returnToMainMenu} theme={theme} />
+                    )}
+
+                    {currentScreen === 'POKER' && user && <PokerGame user={user} onBack={returnToMainMenu} theme={theme} />}
                 </div>
-            </div>
 
-            {/* Original Counter */}
-            <div className="card">
-                <button onClick={() => setCount((count) => count + 1)}>
-                    count is {count}
-                </button>
-                <p>
-                    Edit <code>src/App.tsx</code> and save to test HMR
-                </p>
-            </div>
+                {/* Connection Warning (shown when backend is disconnected) */}
+                {!isBackendConnected && currentScreen !== 'LOGIN' && (
+                    <div
+                        role="status"
+                        aria-live="polite"
+                        style={{
+                            position: 'fixed',
+                            bottom: 20,
+                            right: 20,
+                            backgroundColor: theme.negative,
+                            color: 'white',
+                            padding: '10px 15px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            zIndex: 999,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        }}
+                    >
+                        <span>⚠️ Offline Mode - Some features may be limited</span>
+                    </div>
+                )}
 
-            <p className="read-the-docs">
-                Smart Casino Backend Integration Demo
-            </p>
-        </>
+                {/* Add CSS for animation and hover behaviors */}
+                <style>{`
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to   { transform: translateX(0); opacity: 1; }
+                    }
+                    .app-content { transition: opacity 0.3s ease; }
+                    .app-content > * { animation: fadeIn 0.25s ease; }
+                    @keyframes fadeIn {
+                        from { opacity: 0; transform: translateY(10px); }
+                        to   { opacity: 1; transform: translateY(0); }
+                    }
+                    .backend-status-indicator:hover { filter: brightness(1.05); }
+                    .retry-button:hover { filter: brightness(1.08); }
+                    
+                    /* Responsive adjustments */
+                    @media (max-width: 768px) {
+                        .app-content {
+                            padding: 10px;
+                        }
+                    }
+                    
+                    @media (max-width: 480px) {
+                        .backend-status-indicator {
+                            top: 5px;
+                            right: 5px;
+                            font-size: 10px;
+                            padding: 4px 8px;
+                        }
+                    }
+                `}</style>
+            </div>
+        </GameErrorBoundary>
     );
 }
 

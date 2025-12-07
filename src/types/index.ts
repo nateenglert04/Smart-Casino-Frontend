@@ -1,15 +1,59 @@
-// src/types/index.ts
+// types.ts
+export interface Card {
+    suit: 'HEARTS' | 'DIAMONDS' | 'CLUBS' | 'SPADES';
+    rank: string;
+    value?: number;
+    faceUp: boolean;
+}
 
-// User Types
 export interface User {
-    id?: number;
+    id: number;  // Changed from string to number to match backend
     username: string;
-    token?: string;
     balance?: number;
-    qrSecret?: string;
-    createdAt?: string;
-    lastLogin?: string;
-    isActive?: boolean;
+    token?: string;
+    email?: string;
+    name?: string;
+    role?: string;  // Added role
+    active?: boolean;  // Added active status
+    qrSecret?: string;  // Added QR secret for user
+}
+
+export interface Theme {
+    bgDark: string;
+    panelBg: string;
+    cardBg?: string;
+    textColor: string;
+    accent: string;
+    positive: string;
+    negative: string;
+    muted: string;
+}
+
+export type GameState = 'BETTING' | 'PLAYER_TURN' | 'DEALER_TURN' | 'GAME_OVER';
+export type PokerState = 'PRE_FLOP' | 'FLOP' | 'TURN' | 'RIVER' | 'SHOWDOWN' | 'FOLDED';
+
+export interface Lesson {
+    id: string;
+    title: string;
+    description: string;
+    content: string;
+    xpReward: number;
+    difficulty: number;
+    gameType: 'BLACKJACK' | 'POKER' | 'GENERAL';
+    completed: boolean;
+}
+
+export interface UserProgress {
+    level: number;
+    xp: number;
+    lessonsCompleted: number;
+}
+
+export interface PokerHand {
+    handRank: string;
+    description: string;
+    rankValue: number;
+    cards: Card[];
 }
 
 export interface LoginCredentials {
@@ -21,47 +65,88 @@ export interface RegisterData {
     username: string;
     password: string;
     enableQR?: boolean;
+    email?: string;
 }
 
 export interface AuthResponse {
+    user: User;
     token: string;
-    user: {
-        id: number;
-        username: string;
-        balance: number;
-    };
+    message?: string;
 }
 
 export interface RegisterResponse {
     message: string;
+    user?: User;
+    token?: string;
+}
+
+export interface ApiError {
+    error: string;
+    message?: string;
+    statusCode?: number;
+}
+
+// QR Code Login Types
+export interface QRLoginCredentials {
+    token: string;
+}
+
+export interface QRCodeResponse {
+    qrCode: string;  // base64 encoded image
+    token: string;
+    expiresIn: number;  // seconds until expiry
     userId: number;
 }
 
-// Card and Game Types
-export interface Card {
-    suit: string;
-    rank: string;
+export interface QrLoginToken {
+    id: number;
+    token: string;
+    generatedAt: Date;
+    expiresAt: Date;
+    used: boolean;
+    usedAt?: Date;
+    user: User;
 }
 
-export interface PokerHand {
-    handType: string;
+// Additional types that might be needed
+export interface PokerEvaluation {
+    handName: string;
+    handValue: number;
     cards: Card[];
-    score: number;
 }
 
-export interface PokerEvaluationRequest {
+export interface BlackjackHand {
     cards: Card[];
+    value: number;
+    isBust: boolean;
+    isBlackjack: boolean;
 }
 
-// API Error Response
-export interface ApiError {
-    message: string;
-    statusCode: number;
-    timestamp?: string;
+export interface BlackjackGameState {
+    playerHand: Card[];
+    dealerHand: Card[];
+    gameState: GameState;
+    playerValue: number;
+    dealerValue: number;
+    betAmount: number;
+    balance: number;
 }
 
-// Axios Request/Response Config
-export interface AxiosRequestConfig {
-    headers?: Record<string, string>;
-    [key: string]: any; // This is acceptable for axios config
+// Game statistics
+export interface GameStatistics {
+    balance: number;
+    xp: number;
+    level: number;
+    lessonsCompleted: number;
+    totalGames: number;
+    wins: number;
+    winRate: number;
+}
+
+// User session information
+export interface UserSession {
+    user: User;
+    sessionToken: string;
+    qrToken?: string;
+    expiresAt: Date;
 }
