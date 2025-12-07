@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle2, ArrowLeft, Mail } from 'lucide-react';
 
 // Shadcn UI Imports
 import { Button } from '../../components/ui/button';
@@ -24,6 +24,7 @@ const CreateAccountPage = () => {
   // State
   const [formData, setFormData] = useState({ 
     username: '', 
+    email: '',
     password: '', 
     confirmPassword: '' 
   });
@@ -38,18 +39,20 @@ const CreateAccountPage = () => {
     usernameMax: 20,
     passMin: 8,
     passSpecial: /[!@#$%^&*(),.?":{}|<>]/,
+    emailRegex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   };
 
   // Live Validation Logic
   const isValid = {
     usernameLength: formData.username.length >= requirements.usernameMin && formData.username.length <= requirements.usernameMax,
+    email: requirements.emailRegex.test(formData.email),
     passLength: formData.password.length >= requirements.passMin,
     passSpecial: requirements.passSpecial.test(formData.password),
     passMatch: formData.password.length > 0 && formData.password === formData.confirmPassword
   };
 
   // Helper to check if form is ready for submit
-  const isFormValid = isValid.usernameLength && isValid.passLength && isValid.passSpecial && isValid.passMatch;
+  const isFormValid = isValid.usernameLength && isValid.email && isValid.passLength && isValid.passSpecial && isValid.passMatch;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -83,11 +86,10 @@ const CreateAccountPage = () => {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-felt-gradient p-4">
-      
       <Card className="w-full max-w-md shadow-2xl border-sidebar-border/20 bg-card/95 backdrop-blur-sm">
         <CardHeader className="space-y-4 flex flex-col items-center text-center">
           {/* Logo - slightly smaller here to save vertical space */}
-          <div className="w-60 h-60 relative mb-1">
+          <div className="w-60 h-60 relative">
             <img 
               src={smartCasinoLogo} 
               alt="Smart Casino Logo" 
@@ -136,6 +138,27 @@ const CreateAccountPage = () => {
                 }`}>
                 {requirements.usernameMin}-{requirements.usernameMax} characters
               </p>
+            </div>
+
+            {/* Email Field */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email Address</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  className="pl-9"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  autoComplete="email"
+                />
+              </div>
+              {/* Only show email feedback if they have started typing */}
+              {formData.email.length > 0 && !isValid.email && (
+                <p className="text-xs text-destructive">Please enter a valid email address.</p>
+              )}
             </div>
 
             {/* Password Field */}

@@ -22,10 +22,14 @@ const LoginPage = () => {
   const navigate = useNavigate();
   
   // State Management
-  const [formData, setFormData] = useState({ username: '', password: '' });
+  const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Validation Constants
+  const MIN_LENGTH = 3;
+  const PASS_MIN = 8;
 
   // Implement Auth Context here when built
 
@@ -38,6 +42,12 @@ const LoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    // Basic "Is not empty" check for login
+    if (formData.identifier.length < MIN_LENGTH || formData.password.length < PASS_MIN) {
+      setError('Please enter valid credentials.');
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -62,7 +72,7 @@ const LoginPage = () => {
       
       <Card className="w-full max-w-md shadow-2xl border-sidebar-border/20 bg-card/95 backdrop-blur-sm">
         <CardHeader className="space-y-4 flex flex-col items-center text-center">
-          <div className="w-60 h-60 relative mb-1">
+          <div className="w-60 h-60 relative">
             <img 
               src={smartCasinoLogo} 
               alt="Smart Casino Logo" 
@@ -90,18 +100,17 @@ const LoginPage = () => {
               </div>
             )}
 
-            {/* Username Field */}
+            {/* Username/Email Field */}
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="identifier">Username or Email</Label>
               <div className="relative">
                 <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="username"
-                  placeholder="DalBasnet123"
+                  id="identifier"
+                  placeholder="DalBasnet123 or name@example.com"
                   className="pl-9"
-                  value={formData.username}
+                  value={formData.identifier}
                   onChange={handleInputChange}
-                  maxLength={20}
                   autoComplete="username"
                 />
               </div>
