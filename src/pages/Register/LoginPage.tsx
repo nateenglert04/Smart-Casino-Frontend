@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, User, AlertCircle} from 'lucide-react';
-
-// Shadcn UI Imports - Adjust paths based on your folder structure
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -14,51 +12,51 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-
-// Asset Import
 import smartCasinoLogo from '../../assets/smart-casino.png';
+import { useAuth } from '../../contexts/AuthContext';
+import { SmartCasinoClient } from '../../services/SmartCasinoClient';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   
-  // State Management
-  const [formData, setFormData] = useState({ identifier: '', password: '' });
+  const [formData, setFormData] = useState({ username: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Validation Constants
   const MIN_LENGTH = 3;
   const PASS_MIN = 8;
 
-  // Implement Auth Context here when built
+  const { login } = useAuth();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
-    setError(''); // Clear global errors on type
+    setError(''); 
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    // Basic "Is not empty" check for login
-    if (formData.identifier.length < MIN_LENGTH || formData.password.length < PASS_MIN) {
+    if (formData.username.length < MIN_LENGTH || formData.password.length < PASS_MIN) {
       setError('Please enter valid credentials.');
       return;
     }
 
     try {
       setIsLoading(true);
-      // TODO: Add your Auth API call here
       console.log('Logging in with:', formData);
       
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const client = SmartCasinoClient.getInstance();
+      const response = await client.loginUser(formData);
       
-      // Navigate to dashboard on success
-      navigate('/dashboard'); 
+      if (response.token && response.user) {
+        login(response.token, response.user);
+        navigate('/dashboard'); 
+      } else {
+        setError('Unexpected response from server.');
+      }
     } catch (err) {
       setError('Invalid username or password.');
     } finally {
@@ -100,16 +98,16 @@ const LoginPage = () => {
               </div>
             )}
 
-            {/* Username/Email Field */}
+            {/* Username*/}
             <div className="space-y-2">
-              <Label htmlFor="identifier">Username or Email</Label>
+              <Label htmlFor="identifier">Username</Label>
               <div className="relative">
                 <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  id="identifier"
-                  placeholder="DalBasnet123 or name@example.com"
+                  id="username"
+                  placeholder="DalBasnet123"
                   className="pl-9"
-                  value={formData.identifier}
+                  value={formData.username}
                   onChange={handleInputChange}
                   autoComplete="username"
                 />

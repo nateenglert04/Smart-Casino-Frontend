@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle2, ArrowLeft, Mail } from 'lucide-react';
-
-// Shadcn UI Imports
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -14,14 +12,14 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-
-// Asset Import
 import smartCasinoLogo from '../../assets/smart-casino.png';
+import { SmartCasinoClient } from '../../services/SmartCasinoClient';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CreateAccountPage = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  // State
   const [formData, setFormData] = useState({ 
     username: '', 
     email: '',
@@ -62,6 +60,7 @@ const CreateAccountPage = () => {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     
     if (!isFormValid) {
       setError('Please ensure all requirements are met.');
@@ -70,15 +69,25 @@ const CreateAccountPage = () => {
 
     try {
       setIsLoading(true);
-      // TODO: Add Registration API call here
-      console.log('Registering User:', { username: formData.username, password: formData.password });
+      const client = SmartCasinoClient.getInstance();
+      const registerPayload = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password
+      };
+
+      const response = await client.registerUser(registerPayload);
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // On success, redirect to login or dashboard
-      navigate('/dashboard'); 
-    } catch (err) {
-      setError('Failed to create account. Please try again.');
+      if (response.token && response.user) {
+         login(response.token, response.user);
+         navigate('/dashboard'); 
+      } else {
+         navigate('/login');
+      }
+
+    } catch (err: any) {
+      console.error(err);
+      setError('Could not create User');
     } finally {
       setIsLoading(false);
     }
@@ -233,9 +242,8 @@ const CreateAccountPage = () => {
             
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <ArrowLeft className="h-4 w-4" />
-              {/* Fix to /login once Authentication is added */}
               <Link 
-                to="/"
+                to="/login"
                 className="font-semibold text-primary hover:underline underline-offset-4"
               >
                 Back to Login
