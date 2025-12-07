@@ -1,4 +1,5 @@
-import { Routes, Route, BrowserRouter } from "react-router-dom";
+import { Routes, Route, BrowserRouter, Navigate } from "react-router-dom";
+import { ProtectedRoute } from "./components/ProtectedRoutes";
 import { ThemeProvider } from "./contexts/ThemeContext" 
 import { AuthProvider } from "./contexts/AuthContext";
 import LoginPage from "./pages/Register/LoginPage";
@@ -11,9 +12,17 @@ function App() {
       <AuthProvider>
         <ThemeProvider>
           <Routes>
-            {/* Add Routes here with relevant paths and page references*/}
-            <Route path="/login" element={<LoginPage />} /> {/*Change to /login once authentication is implemented*/}
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
             <Route path="/createAccount" element={<CreateAccountPage />} />
+
+            {/* Protected Routes Wrapper */}
+            <Route element={<ProtectedRoute />}>
+              {/* Any route placed inside here requires login */}
+            </Route>
+
+            {/* Default Redirect */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </ThemeProvider>
       </AuthProvider>
