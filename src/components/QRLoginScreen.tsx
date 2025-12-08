@@ -1,7 +1,8 @@
-// components/QRLoginScreen.tsx
+// components/QRLoginScreen.tsx - Updated with expiration removed
 import React, { useState, useEffect, useRef } from 'react';
 import { userApi } from '../api';
 import type { Theme, User, QRCodeResponse, QRLoginCredentials } from '../types';
+import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 
 interface QRLoginScreenProps {
     onBack: () => void;
@@ -10,128 +11,20 @@ interface QRLoginScreenProps {
     onError: (error: string) => void;
 }
 
-// Mock QR scanner component
-const QrScanner: React.FC<{
-    onScan: (result: string) => void;
-    onError: (error: string) => void;
-    theme: Theme; // Add theme prop
-}> = ({ onScan, onError, theme }) => {
-    const [isScanning, setIsScanning] = useState(false);
-    const videoRef = useRef<HTMLVideoElement>(null);
-
-    const startScanning = async () => {
-        setIsScanning(true);
-        try {
-            // Mock scanning - replace with actual QR scanning library
-            setTimeout(() => {
-                const mockToken = `qr-token-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                onScan(mockToken);
-                setIsScanning(false);
-            }, 2000);
-        } catch (error: unknown) {
-            const message =
-                error instanceof Error ? error.message : 'Failed to access camera';
-
-            onError(message);
-            setIsScanning(false);
-        }
-    };
-
-    return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '15px'
-        }}>
-            <div style={{
-                width: '300px',
-                height: '300px',
-                backgroundColor: '#000',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
-                {isScanning ? (
-                    <>
-                        <div style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            border: '2px solid #00FF00',
-                            animation: 'scanline 2s linear infinite'
-                        }} />
-                        <video
-                            ref={videoRef}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover'
-                            }}
-                            autoPlay
-                            muted
-                        />
-                        <div style={{
-                            position: 'absolute',
-                            color: '#00FF00',
-                            fontSize: '14px',
-                            bottom: '10px',
-                            textAlign: 'center',
-                            width: '100%'
-                        }}>
-                            Scanning...
-                        </div>
-                    </>
-                ) : (
-                    <div style={{
-                        color: '#666',
-                        fontSize: '16px',
-                        textAlign: 'center',
-                        padding: '20px'
-                    }}>
-                        Camera preview will appear here
-                    </div>
-                )}
-            </div>
-
-            <button
-                onClick={startScanning}
-                disabled={isScanning}
-                style={{
-                    backgroundColor: isScanning ? theme.muted : theme.positive,
-                    color: theme.textColor,
-                    border: 'none',
-                    padding: '12px 24px',
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: isScanning ? 'not-allowed' : 'pointer',
-                    minWidth: '200px'
-                }}
-            >
-                {isScanning ? 'SCANNING...' : 'START SCANNING'}
-            </button>
-        </div>
-    );
-};
-
 const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, onError }) => {
-    const [mode, setMode] = useState<'scan' | 'generate' | 'upload'>('scan');
+    const [mode, setMode] = useState<'scan' | 'generate' | 'upload' | 'manual'>('manual');
     const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
-    const [, setQrToken] = useState<string | null>(null);
-    const [expiresIn, setExpiresIn] = useState<number>(300);
-    const [, setScanning] = useState(false);
     const [manualToken, setManualToken] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const scannerControlsRef = useRef<IScannerControls | null>(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanError, setScanError] = useState<string | null>(null);
 
-    // Check if user is logged in (has token)
+    // Check if user is logged in
     useEffect(() => {
         const token = localStorage.getItem('token');
         setIsLoggedIn(!!token);
@@ -143,27 +36,86 @@ const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, o
         try {
             const response: QRCodeResponse = await userApi.generateQRCode();
             setQrCodeImage(response.qrCode);
-            setQrToken(response.token);
-            setExpiresIn(response.expiresIn);
-            onError(`QR code generated! Expires in ${Math.floor(response.expiresIn / 60)} minutes.`);
+            onError('QR code generated successfully!');
         } catch (err) {
             const errorMessage = err instanceof Error
                 ? err.message
                 : 'Failed to generate QR code. Please log in first.';
             onError(errorMessage);
-            if (errorMessage.includes('401') || errorMessage.includes('logged in')) {
-                setMode('scan');
+            if (errorMessage.includes('401') || errorMessage.includes('token')) {
+                setMode('manual');
+                setIsLoggedIn(false);
             }
         } finally {
             setIsGenerating(false);
         }
     };
 
-    // Handle QR code scan result
-    const handleScanResult = async (token: string) => {
-        setScanning(false);
+    // Handle webcam scanning
+    const startScan = async () => {
+        setScanError(null);
+        if (isScanning) return;
         try {
-            const qrCredentials: QRLoginCredentials = { token };
+            const codeReader = new BrowserMultiFormatReader();
+            await stopScan();
+            const videoEl = videoRef.current;
+            if (!videoEl) {
+                setScanError('Video element not available');
+                return;
+            }
+            setIsScanning(true);
+            const controls = await codeReader.decodeFromVideoDevice(undefined, videoEl, (result) => {
+                if (result) {
+                    const text = result.getText();
+                    handleDecoded(text);
+                }
+                // ignore transient errors during scanning loop
+            });
+            scannerControlsRef.current = controls;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e) {
+            setScanError('Camera access denied or not available');
+            setIsScanning(false);
+        }
+    };
+
+    const stopScan = async () => {
+        try {
+            scannerControlsRef.current?.stop();
+            scannerControlsRef.current = null;
+        } catch { /* empty */ }
+        try {
+            const stream = videoRef.current?.srcObject as MediaStream | null;
+            stream?.getTracks().forEach(t => t.stop());
+        } catch { /* empty */ }
+        setIsScanning(false);
+    };
+
+    const handleDecoded = async (decodedText: string) => {
+        await stopScan();
+
+        let token = decodedText;
+
+        // Extract token from QR content if it's a full URL
+        if (decodedText.startsWith('smartcasino://login?token=')) {
+            try {
+                // Parse the URL to extract token
+                const url = new URL(decodedText.replace('smartcasino://', 'http://'));
+                token = url.searchParams.get('token') || decodedText;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            } catch (e) {//error was giving grief
+                // If URL parsing fails, try to extract manually
+                const tokenMatch = decodedText.match(/token=([^&]+)/);
+                if (tokenMatch && tokenMatch[1]) {
+                    token = tokenMatch[1];
+                }
+            }
+        }
+
+        setManualToken(token);
+        setIsLoggingIn(true);
+        try {
+            const qrCredentials: QRLoginCredentials = { token: token };
             const authResponse = await userApi.loginWithQR(qrCredentials);
 
             if (authResponse?.user && authResponse?.token) {
@@ -171,6 +123,7 @@ const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, o
                     id: authResponse.user.id,
                     username: authResponse.user.username,
                     balance: authResponse.user.balance ?? 0,
+                    email: authResponse.user.email,
                     token: authResponse.token
                 };
                 onLogin(user);
@@ -178,64 +131,118 @@ const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, o
         } catch (err) {
             const errorMessage = err instanceof Error
                 ? err.message
-                : 'Invalid QR code. Please try again.';
+                : 'Invalid QR token. Please try again.';
             onError(errorMessage);
+        } finally {
+            setIsLoggingIn(false);
         }
     };
 
-    // Handle file upload
-    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-
-        // In a real app, you would use a library to decode QR from image
-        // For now, we'll simulate it
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const result = e.target?.result;
-            if (result) {
-                // Simulate QR decoding
-                setTimeout(() => {
-                    const mockToken = `file-token-${Date.now()}`;
-                    handleScanResult(mockToken);
-                }, 1000);
-            }
-        };
-        reader.readAsDataURL(file);
-    };
-
-    // Handle manual token entry
+    // Handle manual token login
     const handleManualTokenLogin = async () => {
         if (!manualToken.trim()) {
             onError('Please enter a token');
             return;
         }
-        await handleScanResult(manualToken);
-    };
 
-    // Start scanning
-    const startScanning = () => {
-        setScanning(true);
-        setMode('scan');
-    };
+        let token = manualToken.trim();
 
-    // Countdown timer for QR code expiry
-    useEffect(() => {
-        if (!expiresIn || expiresIn <= 0) return;
-
-        const timer = setInterval(() => {
-            setExpiresIn(prev => {
-                if (prev <= 1) {
-                    clearInterval(timer);
-                    onError('QR code expired. Please generate a new one.');
-                    return 0;
+        // Extract token if it's a full URL
+        if (manualToken.startsWith('smartcasino://login?token=')) {
+            try {
+                const url = new URL(manualToken.replace('smartcasino://', 'http://'));
+                token = url.searchParams.get('token') || manualToken;
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            } catch (e) {
+                const tokenMatch = manualToken.match(/token=([^&]+)/);
+                if (tokenMatch && tokenMatch[1]) {
+                    token = tokenMatch[1];
                 }
-                return prev - 1;
-            });
-        }, 1000);
+            }
+        }
 
-        return () => clearInterval(timer);
-    }, [expiresIn, onError]);
+        setIsLoggingIn(true);
+        try {
+            const qrCredentials: QRLoginCredentials = { token: token };
+            const authResponse = await userApi.loginWithQR(qrCredentials);
+
+            if (authResponse?.user && authResponse?.token) {
+                const user: User = {
+                    id: authResponse.user.id,
+                    username: authResponse.user.username,
+                    balance: authResponse.user.balance ?? 0,
+                    email: authResponse.user.email,
+                    token: authResponse.token
+                };
+                onLogin(user);
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error
+                ? err.message
+                : 'Invalid QR token. Please try again.';
+            onError(errorMessage);
+        } finally {
+            setIsLoggingIn(false);
+        }
+    };
+
+
+    // Handle file upload
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            onError('Please select a valid image file');
+            return;
+        }
+
+        setIsLoggingIn(true);
+        try {
+            const authResponse = await userApi.uploadQRCode(file);
+
+            if (authResponse?.user && authResponse?.token) {
+                const user: User = {
+                    id: authResponse.user.id,
+                    username: authResponse.user.username,
+                    balance: authResponse.user.balance ?? 0,
+                    email: authResponse.user.email,
+                    token: authResponse.token
+                };
+                onLogin(user);
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error
+                ? err.message
+                : 'Failed to process QR code from image';
+            onError(errorMessage);
+        } finally {
+            setIsLoggingIn(false);
+        }
+    };
+
+    // Download QR code
+    const handleDownloadQR = () => {
+        if (!qrCodeImage) return;
+
+        const link = document.createElement('a');
+        link.href = qrCodeImage;
+        link.download = 'smartcasino-qr.png';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        onError('QR code downloaded successfully!');
+    };
+
+    // Stop scanning when leaving scan mode or on unmount
+    useEffect(() => {
+        if (mode !== 'scan') {
+            stopScan();
+        }
+        return () => {
+            stopScan();
+        };
+    }, [mode]);
 
     return (
         <div style={{
@@ -244,6 +251,7 @@ const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, o
             padding: '20px',
             minHeight: '100vh'
         }}>
+            {/* Header */}
             <div style={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -273,80 +281,89 @@ const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, o
                 </button>
             </div>
 
-            {/* Mode Selection */}
+            {/* Mode Selection Tabs */}
             <div style={{
-                display: 'flex',
-                justifyContent: 'center',
+                display: 'grid',
+                gridTemplateColumns: isLoggedIn ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
                 gap: '10px',
                 marginBottom: '30px'
             }}>
                 <button
-                    onClick={() => {
-                        setMode('scan');
-                        startScanning();
+                    onClick={() => setMode('manual')}
+                    style={{
+                        backgroundColor: mode === 'manual' ? theme.accent : theme.panelBg,
+                        color: theme.textColor,
+                        border: mode === 'manual' ? `2px solid ${theme.accent}` : 'none',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: mode === 'manual' ? 'bold' : 'normal',
+                        transition: 'all 0.3s'
                     }}
+                >
+                    📝 Enter Token
+                </button>
+
+                <button
+                    onClick={() => {
+                        setMode('upload');
+                    }}
+                    style={{
+                        backgroundColor: mode === 'upload' ? '#FF8C00' : theme.panelBg,
+                        color: theme.textColor,
+                        border: mode === 'upload' ? '2px solid #FF8C00' : 'none',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: mode === 'upload' ? 'bold' : 'normal',
+                        transition: 'all 0.3s'
+                    }}
+                >
+                    📤 Upload Image
+                </button>
+
+                <button
+                    onClick={() => setMode('scan')}
                     style={{
                         backgroundColor: mode === 'scan' ? theme.accent : theme.panelBg,
                         color: theme.textColor,
-                        border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '6px',
+                        border: mode === 'scan' ? `2px solid ${theme.accent}` : 'none',
+                        padding: '12px 20px',
+                        borderRadius: '8px',
                         cursor: 'pointer',
                         fontSize: '14px',
-                        flex: 1
+                        fontWeight: mode === 'scan' ? 'bold' : 'normal',
+                        transition: 'all 0.3s'
                     }}
                 >
-                    Scan QR Code
+                    📷 Scan with Camera
                 </button>
 
                 {isLoggedIn && (
                     <button
                         onClick={() => {
                             setMode('generate');
-                            generateQRCode();
+                            if (!qrCodeImage) generateQRCode();
                         }}
                         disabled={isGenerating}
                         style={{
                             backgroundColor: mode === 'generate' ? theme.positive : theme.panelBg,
                             color: theme.textColor,
-                            border: 'none',
-                            padding: '10px 20px',
-                            borderRadius: '6px',
+                            border: mode === 'generate' ? `2px solid ${theme.positive}` : 'none',
+                            padding: '12px 20px',
+                            borderRadius: '8px',
                             cursor: isGenerating ? 'not-allowed' : 'pointer',
                             fontSize: '14px',
-                            flex: 1,
-                            opacity: isGenerating ? 0.7 : 1
+                            fontWeight: mode === 'generate' ? 'bold' : 'normal',
+                            opacity: isGenerating ? 0.7 : 1,
+                            transition: 'all 0.3s'
                         }}
                     >
-                        {isGenerating ? 'GENERATING...' : 'Generate QR Code'}
+                        {isGenerating ? '⏳ Generating...' : '🔐 Generate QR'}
                     </button>
                 )}
-
-                <button
-                    onClick={() => {
-                        setMode('upload');
-                        fileInputRef.current?.click();
-                    }}
-                    style={{
-                        backgroundColor: mode === 'upload' ? '#FF8C00' : theme.panelBg,
-                        color: theme.textColor,
-                        border: 'none',
-                        padding: '10px 20px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        flex: 1
-                    }}
-                >
-                    Upload Image
-                </button>
-                <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    style={{ display: 'none' }}
-                />
             </div>
 
             {/* Content Area */}
@@ -354,224 +371,140 @@ const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, o
                 backgroundColor: theme.panelBg,
                 borderRadius: '12px',
                 padding: '30px',
-                minHeight: '400px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center'
+                minHeight: '400px'
             }}>
-                {mode === 'scan' && (
-                    <>
-                        <h2 style={{
-                            color: theme.textColor,
-                            textAlign: 'center',
-                            marginBottom: '20px'
-                        }}>
-                            Scan QR Code with Camera
+                {/* Manual Token Entry Mode */}
+                {mode === 'manual' && (
+                    <div style={{ textAlign: 'center' }}>
+                        <h2 style={{ color: theme.textColor, marginBottom: '20px' }}>
+                            Enter QR Token Manually
                         </h2>
-                        <QrScanner
-                            onScan={handleScanResult}
-                            onError={onError}
-                            theme={theme} // Pass theme to QrScanner
-                        />
-                        <div style={{ marginTop: '30px', textAlign: 'center' }}>
-                            <p style={{ color: theme.muted, marginBottom: '15px' }}>
-                                Or enter token manually:
-                            </p>
-                            <div style={{
-                                display: 'flex',
-                                gap: '10px',
-                                maxWidth: '400px',
-                                margin: '0 auto'
-                            }}>
-                                <input
-                                    type="text"
-                                    placeholder="Enter QR token"
-                                    value={manualToken}
-                                    onChange={(e) => setManualToken(e.target.value)}
-                                    style={{
-                                        flex: 1,
-                                        backgroundColor: '#3C3C3C',
-                                        color: theme.textColor,
-                                        border: `1px solid ${theme.muted}`,
-                                        borderRadius: '6px',
-                                        padding: '10px',
-                                        fontSize: '14px'
-                                    }}
-                                />
-                                <button
-                                    onClick={handleManualTokenLogin}
-                                    style={{
-                                        backgroundColor: theme.accent,
-                                        color: theme.textColor,
-                                        border: 'none',
-                                        padding: '10px 20px',
-                                        borderRadius: '6px',
-                                        cursor: 'pointer',
-                                        fontSize: '14px'
-                                    }}
-                                >
-                                    Login
-                                </button>
-                            </div>
-                        </div>
-                    </>
-                )}
+                        <p style={{ color: theme.muted, marginBottom: '30px' }}>
+                            Enter the token from your QR code to log in
+                        </p>
 
-                {mode === 'generate' && qrCodeImage && (
-                    <>
-                        <h2 style={{
-                            color: theme.textColor,
-                            textAlign: 'center',
-                            marginBottom: '20px'
-                        }}>
-                            Your QR Code for Login
-                        </h2>
                         <div style={{
-                            backgroundColor: 'white',
-                            padding: '20px',
-                            borderRadius: '8px',
-                            marginBottom: '20px'
+                            maxWidth: '500px',
+                            margin: '0 auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '15px'
                         }}>
-                            <img
-                                src={qrCodeImage}
-                                alt="QR Code"
+                            <input
+                                type="text"
+                                placeholder="Enter QR token here..."
+                                value={manualToken}
+                                onChange={(e) => setManualToken(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter' && !isLoggingIn) {
+                                        handleManualTokenLogin();
+                                    }
+                                }}
+                                disabled={isLoggingIn}
                                 style={{
-                                    width: '250px',
-                                    height: '250px',
-                                    display: 'block'
+                                    padding: '15px',
+                                    backgroundColor: '#3C3C3C',
+                                    color: theme.textColor,
+                                    border: `2px solid ${theme.muted}`,
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    outline: 'none'
                                 }}
                             />
-                        </div>
-                        <div style={{
-                            color: theme.textColor,
-                            textAlign: 'center',
-                            marginBottom: '20px'
-                        }}>
-                            <p>Scan this QR code with another device to log in</p>
-                            <p style={{
-                                color: expiresIn < 60 ? theme.negative : '#FFD700',
-                                fontWeight: 'bold'
-                            }}>
-                                Expires in: {Math.floor(expiresIn / 60)}:{String(expiresIn % 60).padStart(2, '0')}
-                            </p>
-                        </div>
-                        <div style={{
-                            display: 'flex',
-                            gap: '10px',
-                            marginTop: '20px'
-                        }}>
-                            <button
-                                onClick={generateQRCode}
-                                disabled={isGenerating}
-                                style={{
-                                    backgroundColor: theme.accent,
-                                    color: theme.textColor,
-                                    border: 'none',
-                                    padding: '10px 20px',
-                                    borderRadius: '6px',
-                                    cursor: isGenerating ? 'not-allowed' : 'pointer',
-                                    fontSize: '14px',
-                                    opacity: isGenerating ? 0.7 : 1
-                                }}
-                            >
-                                Generate New QR
-                            </button>
-                            <button
-                                onClick={() => {
-                                    const link = document.createElement('a');
-                                    link.href = qrCodeImage;
-                                    link.download = 'smartcasino-qr.png';
-                                    link.click();
-                                }}
-                                style={{
-                                    backgroundColor: theme.positive,
-                                    color: theme.textColor,
-                                    border: 'none',
-                                    padding: '10px 20px',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px'
-                                }}
-                            >
-                                Download QR
-                            </button>
-                        </div>
-                    </>
-                )}
 
-                {mode === 'generate' && !qrCodeImage && !isGenerating && (
-                    <div style={{
-                        textAlign: 'center',
-                        color: theme.textColor
-                    }}>
-                        <p>No QR code generated yet.</p>
-                        <button
-                            onClick={generateQRCode}
-                            disabled={isGenerating}
-                            style={{
-                                backgroundColor: theme.accent,
-                                color: theme.textColor,
-                                border: 'none',
-                                padding: '12px 24px',
-                                borderRadius: '8px',
-                                cursor: isGenerating ? 'not-allowed' : 'pointer',
-                                marginTop: '20px',
-                                opacity: isGenerating ? 0.7 : 1
-                            }}
-                        >
-                            {isGenerating ? 'Generating...' : 'Generate QR Code'}
-                        </button>
+                            <button
+                                onClick={handleManualTokenLogin}
+                                disabled={isLoggingIn || !manualToken.trim()}
+                                style={{
+                                    backgroundColor: isLoggingIn || !manualToken.trim() ? theme.muted : theme.positive,
+                                    color: theme.textColor,
+                                    border: 'none',
+                                    padding: '15px',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: isLoggingIn || !manualToken.trim() ? 'not-allowed' : 'pointer',
+                                    opacity: isLoggingIn || !manualToken.trim() ? 0.7 : 1
+                                }}
+                            >
+                                {isLoggingIn ? 'LOGGING IN...' : 'LOGIN WITH TOKEN'}
+                            </button>
+                        </div>
+
+                        <div style={{
+                            marginTop: '40px',
+                            padding: '20px',
+                            backgroundColor: '#3C3C3C',
+                            borderRadius: '8px',
+                            textAlign: 'left'
+                        }}>
+                            <h3 style={{ color: theme.textColor, marginBottom: '10px' }}>
+                                ℹ️ How to get a token:
+                            </h3>
+                            <ul style={{ color: theme.muted, fontSize: '14px', paddingLeft: '20px' }}>
+                                <li>Log in on another device</li>
+                                <li>Generate a QR code from the main menu</li>
+                                <li>Copy the token displayed below the QR code</li>
+                                <li>Paste it here to log in instantly</li>
+                            </ul>
+                        </div>
                     </div>
                 )}
 
-                {mode === 'generate' && isGenerating && !qrCodeImage && (
-                    <div style={{
-                        textAlign: 'center',
-                        color: theme.textColor
-                    }}>
-                        <p>Generating QR code...</p>
-                        <div style={{
-                            width: '50px',
-                            height: '50px',
-                            border: `4px solid ${theme.muted}`,
-                            borderTop: `4px solid ${theme.accent}`,
-                            borderRadius: '50%',
-                            animation: 'spin 1s linear infinite',
-                            margin: '20px auto'
-                        }} />
-                    </div>
-                )}
-
+                {/* Upload Image Mode */}
                 {mode === 'upload' && (
-                    <>
-                        <h2 style={{
-                            color: theme.textColor,
-                            textAlign: 'center',
-                            marginBottom: '20px'
-                        }}>
+                    <div style={{ textAlign: 'center' }}>
+                        <h2 style={{ color: theme.textColor, marginBottom: '20px' }}>
                             Upload QR Code Image
                         </h2>
-                        <div style={{
-                            border: `2px dashed ${theme.muted}`,
-                            borderRadius: '12px',
-                            padding: '40px',
-                            textAlign: 'center',
-                            cursor: 'pointer',
-                            marginBottom: '20px',
-                            width: '100%',
-                            maxWidth: '400px'
-                        }}
-                             onClick={() => fileInputRef.current?.click()}
+                        <p style={{ color: theme.muted, marginBottom: '30px' }}>
+                            Select a saved QR code image from your device
+                        </p>
+
+                        <div
+                            style={{
+                                border: `3px dashed ${theme.muted}`,
+                                borderRadius: '12px',
+                                padding: '60px 40px',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s',
+                                backgroundColor: '#3C3C3C',
+                                maxWidth: '500px',
+                                margin: '0 auto'
+                            }}
+                            onClick={() => fileInputRef.current?.click()}
+                            onDragOver={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.style.borderColor = theme.accent;
+                                e.currentTarget.style.backgroundColor = `${theme.accent}20`;
+                            }}
+                            onDragLeave={(e) => {
+                                e.currentTarget.style.borderColor = theme.muted;
+                                e.currentTarget.style.backgroundColor = '#3C3C3C';
+                            }}
+                            onDrop={(e) => {
+                                e.preventDefault();
+                                e.currentTarget.style.borderColor = theme.muted;
+                                e.currentTarget.style.backgroundColor = '#3C3C3C';
+
+                                const file = e.dataTransfer.files[0];
+                                if (file) {
+                                    const mockEvent = {
+                                        target: { files: [file] }
+                                    } as unknown as React.ChangeEvent<HTMLInputElement>;
+                                    handleFileUpload(mockEvent);
+                                }
+                            }}
                         >
-                            <div style={{ fontSize: '48px', marginBottom: '10px' }}>📁</div>
-                            <p style={{ color: theme.textColor, marginBottom: '10px' }}>
-                                Click to select QR code image
-                            </p>
-                            <p style={{ color: theme.muted, fontSize: '14px' }}>
+                            <div style={{ fontSize: '64px', marginBottom: '20px' }}>📸</div>
+                            <div style={{ color: theme.textColor, fontSize: '18px', marginBottom: '10px', fontWeight: 'bold' }}>
+                                Click or drag & drop to select image
+                            </div>
+                            <div style={{ color: theme.muted, fontSize: '14px' }}>
                                 Supports: PNG, JPG, JPEG
-                            </p>
+                            </div>
                         </div>
+
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -579,34 +512,245 @@ const QRLoginScreen: React.FC<QRLoginScreenProps> = ({ onBack, onLogin, theme, o
                             onChange={handleFileUpload}
                             style={{ display: 'none' }}
                         />
-                    </>
+
+                        {isLoggingIn && (
+                            <div style={{ marginTop: '30px' }}>
+                                <div style={{
+                                    width: '50px',
+                                    height: '50px',
+                                    border: `4px solid ${theme.muted}`,
+                                    borderTop: `4px solid ${theme.accent}`,
+                                    borderRadius: '50%',
+                                    animation: 'spin 1s linear infinite',
+                                    margin: '0 auto'
+                                }} />
+                                <p style={{ color: theme.textColor, marginTop: '15px' }}>
+                                    Processing QR code...
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Scan with Camera Mode */}
+                {mode === 'scan' && (
+                    <div style={{ textAlign: 'center' }}>
+                        <h2 style={{ color: theme.textColor, marginBottom: '20px' }}>
+                            Scan QR Code with Camera
+                        </h2>
+                        <p style={{ color: theme.muted, marginBottom: '20px' }}>
+                            Point your camera at the QR code to log in automatically
+                        </p>
+
+                        <div style={{
+                            backgroundColor: '#000',
+                            borderRadius: '12px',
+                            overflow: 'hidden',
+                            display: 'inline-block',
+                            border: `3px solid ${theme.muted}`,
+                            boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
+                        }}>
+                            <video
+                                ref={videoRef}
+                                style={{ width: '420px', height: '320px', objectFit: 'cover' }}
+                                muted
+                                playsInline
+                                autoPlay
+                            />
+                        </div>
+
+                        {scanError && (
+                            <div style={{
+                                backgroundColor: `${theme.negative}20`,
+                                color: theme.textColor,
+                                border: `1px solid ${theme.negative}`,
+                                borderRadius: '8px',
+                                padding: '10px',
+                                marginTop: '15px',
+                                maxWidth: '520px',
+                                marginLeft: 'auto',
+                                marginRight: 'auto'
+                            }}>
+                                {scanError}
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '20px' }}>
+                            {!isScanning ? (
+                                <button
+                                    onClick={startScan}
+                                    style={{
+                                        backgroundColor: theme.accent,
+                                        color: theme.textColor,
+                                        border: 'none',
+                                        padding: '12px 24px',
+                                        borderRadius: '8px',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ▶ Start Scanning
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={stopScan}
+                                    style={{
+                                        backgroundColor: theme.negative,
+                                        color: theme.textColor,
+                                        border: 'none',
+                                        padding: '12px 24px',
+                                        borderRadius: '8px',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    ■ Stop Scanning
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Generate QR Mode */}
+                {mode === 'generate' && (
+                    <div style={{ textAlign: 'center' }}>
+                        {qrCodeImage ? (
+                            <>
+                                <h2 style={{ color: theme.textColor, marginBottom: '20px' }}>
+                                    Your QR Code for Login
+                                </h2>
+                                <p style={{ color: theme.muted, marginBottom: '30px' }}>
+                                    Scan this code with another device to log in
+                                </p>
+
+                                <div style={{
+                                    backgroundColor: 'white',
+                                    padding: '20px',
+                                    borderRadius: '12px',
+                                    display: 'inline-block',
+                                    marginBottom: '20px',
+                                    boxShadow: '0 4px 16px rgba(0,0,0,0.2)'
+                                }}>
+                                    <img
+                                        src={qrCodeImage}
+                                        alt="QR Code"
+                                        style={{
+                                            width: '300px',
+                                            height: '300px',
+                                            display: 'block'
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '15px',
+                                    justifyContent: 'center',
+                                    flexWrap: 'wrap'
+                                }}>
+                                    <button
+                                        onClick={generateQRCode}
+                                        disabled={isGenerating}
+                                        style={{
+                                            backgroundColor: isGenerating ? theme.muted : theme.accent,
+                                            color: theme.textColor,
+                                            border: 'none',
+                                            padding: '12px 24px',
+                                            borderRadius: '8px',
+                                            fontSize: '16px',
+                                            fontWeight: 'bold',
+                                            cursor: isGenerating ? 'not-allowed' : 'pointer',
+                                            opacity: isGenerating ? 0.7 : 1
+                                        }}
+                                    >
+                                        🔄 Generate New
+                                    </button>
+
+                                    <button
+                                        onClick={handleDownloadQR}
+                                        style={{
+                                            backgroundColor: theme.positive,
+                                            color: theme.textColor,
+                                            border: 'none',
+                                            padding: '12px 24px',
+                                            borderRadius: '8px',
+                                            fontSize: '16px',
+                                            fontWeight: 'bold',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        📥 Download
+                                    </button>
+                                </div>
+                            </>
+                        ) : isGenerating ? (
+                            <div>
+                                <div style={{
+                                    width: '80px',
+                                    height: '80px',
+                                    border: `6px solid ${theme.muted}`,
+                                    borderTop: `6px solid ${theme.accent}`,
+                                    borderRadius: '50%',
+                                    animation: 'spin 1s linear infinite',
+                                    margin: '40px auto'
+                                }} />
+                                <p style={{ color: theme.textColor, fontSize: '18px' }}>
+                                    Generating your QR code...
+                                </p>
+                            </div>
+                        ) : (
+                            <div>
+                                <p style={{ color: theme.textColor, marginBottom: '20px' }}>
+                                    No QR code generated yet.
+                                </p>
+                                <button
+                                    onClick={generateQRCode}
+                                    style={{
+                                        backgroundColor: theme.accent,
+                                        color: theme.textColor,
+                                        border: 'none',
+                                        padding: '15px 30px',
+                                        borderRadius: '8px',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Generate QR Code
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 )}
             </div>
 
-            {/* Instructions */}
+            {/* Instructions Panel */}
+            {/* Instructions Panel */}
             <div style={{
                 marginTop: '30px',
-                padding: '20px',
+                padding: '25px',
                 backgroundColor: theme.panelBg,
                 borderRadius: '8px',
                 color: theme.muted,
                 fontSize: '14px'
             }}>
-                <h3 style={{ color: theme.textColor, marginBottom: '10px' }}>How to use:</h3>
-                <ul style={{ paddingLeft: '20px', margin: 0 }}>
-                    <li><strong>Scan QR Code:</strong> Use your device's camera to scan a QR code from another device</li>
-                    <li><strong>Generate QR Code:</strong> Create a QR code that you can scan with another device (requires login)</li>
+                <h3 style={{ color: theme.textColor, marginBottom: '15px' }}>
+                    💡 Quick Guide:
+                </h3>
+                <ul style={{ paddingLeft: '20px', margin: 0, lineHeight: '1.8' }}>
+                    <li><strong>Enter Token:</strong> Manually type in a QR token to log in</li>
                     <li><strong>Upload Image:</strong> Select a saved QR code image from your device</li>
-                    <li>QR codes expire after 5 minutes for security</li>
-                    <li>Each QR code can only be used once</li>
+                    {isLoggedIn && <li><strong>Generate QR:</strong> Create a new QR code for another device to scan</li>}
+                    <li>QR codes can be used anytime after generation</li>
+                    <li>Each QR code remains active until you generate a new one</li>
+                    <li>QR codes never expire - save them for future use</li>
+                    <li>Generate a new QR code if you lose your current one</li>
                 </ul>
             </div>
 
             <style>{`
-                @keyframes scanline {
-                    0% { transform: translateY(-100%); }
-                    100% { transform: translateY(100%); }
-                }
                 @keyframes spin {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }

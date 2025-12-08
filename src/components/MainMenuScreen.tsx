@@ -6,6 +6,8 @@ interface MainMenuScreenProps {
     onPlayBlackjack: () => void;
     onPlayPoker: () => void;
     onShowLessons: () => void;
+    onShowGameLobby: () => void; // ADDED
+    onShowQRGenerate: () => void;
     onLogout: () => void;
     theme: Theme;
 }
@@ -15,6 +17,8 @@ const MainMenuScreen: React.FC<MainMenuScreenProps> = ({
                                                            onPlayBlackjack,
                                                            onPlayPoker,
                                                            onShowLessons,
+                                                           onShowGameLobby, // ADDED
+                                                           onShowQRGenerate,
                                                            onLogout,
                                                            theme
                                                        }) => {
@@ -26,14 +30,17 @@ const MainMenuScreen: React.FC<MainMenuScreenProps> = ({
             icon: '📚',
             description: 'Learn game strategies'
         },
-        // In the menuButtons array in MainMenuScreen.tsx
+        {
+            text: 'GAME LOBBY',
+            color: '#FF8C00',
+            onClick: onShowGameLobby, // ADDED
+            icon: '🎮',
+            description: 'Choose and join game tables'
+        },
         {
             text: 'GENERATE QR LOGIN',
             color: '#3399FF',
-            onClick: () => {
-                // Navigate to QR generation screen
-                // You'll need to add this navigation to your App.tsx
-            },
+            onClick: onShowQRGenerate,
             icon: '📱',
             description: 'Generate QR code for quick login'
         },
@@ -53,7 +60,7 @@ const MainMenuScreen: React.FC<MainMenuScreenProps> = ({
         },
         {
             text: 'VIEW STATISTICS',
-            color: '#FF8C00',
+            color: '#4CAF50',
             onClick: () => {
                 // Show mock statistics
                 alert(`Game Statistics:\n\nBalance: $${user.balance?.toFixed(2) || '0.00'}\nXP: 500\nLevel: 3\nLessons Completed: 2\n\nTotal Games: 15\nWins: 9\nWin Rate: 60%`);
@@ -67,7 +74,7 @@ const MainMenuScreen: React.FC<MainMenuScreenProps> = ({
             onClick: onLogout,
             icon: '🚪',
             description: 'Return to login screen'
-        }
+        },
     ];
 
     return (

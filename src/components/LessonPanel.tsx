@@ -183,7 +183,7 @@ const LessonPanel: React.FC<LessonPanelProps> = ({ user, onBack, theme, onError 
         );
 
         setProgress({
-            level: Math.max(1, Math.floor((user.id?.length || 0) % 5) + 1),
+            level: Math.floor((completedLessons * 125) / 500) + 1,
             xp: completedLessons * 125,
             lessonsCompleted: completedLessons
         });

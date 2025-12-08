@@ -1,176 +1,289 @@
-// api.ts
-import axios, {
-    type AxiosInstance,
-    type AxiosResponse,
-    AxiosError,
-    type InternalAxiosRequestConfig,
-    type AxiosRequestHeaders
-} from 'axios';
-import type {
-    Card,
-    PokerHand,
-    LoginCredentials,
-    RegisterData,
-    AuthResponse,
-    RegisterResponse,
-    User,
-    ApiError,
-    QRCodeResponse,
-    QRLoginCredentials
-} from './types';
+// api.ts - Complete API integration
+import axios, { AxiosInstance } from 'axios';
 
-// Use Vite env var with safe access
-const API_BASE_URL = import.meta.env?.VITE_API_URL
-    ? String(import.meta.env.VITE_API_URL)
-    : 'http://localhost:8080/api';
+const API_BASE_URL = (typeof window !== 'undefined' && window.location?.port)
+    ? '/api'
+    : ((typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || 'http://localhost:8080/api');
 
-console.log('API Base URL:', API_BASE_URL);
-
-const api: AxiosInstance = axios.create({
+// Create axios instance with default config
+const apiClient: AxiosInstance = axios.create({
     baseURL: API_BASE_URL,
     headers: {
         'Content-Type': 'application/json',
     },
-    timeout: 5000,
+    timeout: 10000,
 });
 
-// Enhanced request interceptor with logging
-api.interceptors.request.use(
-    (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
-        console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`);
-        console.log('[API Request] Data:', config.data);
+interface ServerErrorResponse {
+    error?: string;
+    message?: string;
+    [key: string]: unknown; // allows extra fields safely
+}
 
+// Add request interceptor to include JWT token
+apiClient.interceptors.request.use(
+    (config) => {
         const token = localStorage.getItem('token');
-        if (token && config.headers) {
-            (config.headers as AxiosRequestHeaders)['Authorization'] = `Bearer ${token}`;
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
         }
         return config;
     },
-    (error: AxiosError) => {
-        console.error('[API Request Error]', error);
+    (error) => {
         return Promise.reject(error);
     }
 );
 
-// Enhanced response interceptor
-api.interceptors.response.use(
-    (response: AxiosResponse) => {
-        console.log(`[API Response] ${response.status} ${response.config.url}`);
-        return response;
-    },
-    (error: AxiosError<ApiError>) => {
-        console.error('[API Response Error]', {
-            url: error.config?.url,
-            method: error.config?.method,
-            status: error.response?.status,
-            statusText: error.response?.statusText,
-            data: error.response?.data,
-            message: error.message
-        });
-
+// Add response interceptor for error handling
+apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
         if (error.response?.status === 401) {
+            // Token expired or invalid
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            // You might want to redirect to login here
         }
         return Promise.reject(error);
     }
 );
 
-// Poker API
-export const pokerApi = {
-    evaluateHand: async (cards: Card[]): Promise<PokerHand> => {
-        try {
-            console.log('Sending cards to evaluate:', cards);
-            const response = await api.post<PokerHand>('/poker/evaluate', cards);
-            console.log('Evaluation response:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('Poker evaluation failed:', error);
-            throw error;
-        }
-    }
-};
+// Type definitions
+export interface LoginCredentials {
+    username: string;
+    password: string;
+}
 
-// User API
+export interface RegisterData {
+    username: string;
+    password: string;
+    email: string;
+    enableQR?: boolean;
+}
+
+export interface QRLoginCredentials {
+    token?: string;
+    qrContent?: string;
+}
+
+export interface AuthResponse {
+    user: {
+        id: number;
+        username: string;
+        email: string;
+        balance: number;
+    };
+    token: string;
+}
+
+export interface RegisterWithQRResponse extends AuthResponse {
+    qrData?: {
+        qrCode: string;
+        token: string;
+        qrContent: string;
+        downloadUrl: string;
+    };
+}
+
+export interface QRCodeResponse {
+    qrCode: string;
+    token: string;
+    qrContent: string;
+    downloadUrl: string;
+    message: string;
+}
+
+// API Functions
 export const userApi = {
-    login: async (credentials: LoginCredentials): Promise<AuthResponse> => {
+    // Login with username and password
+    async login(credentials: LoginCredentials): Promise<AuthResponse> {
         try {
-            console.log('Attempting login with:', credentials);
-            const response = await api.post<AuthResponse>('/auth/login', credentials);
-            console.log('Login response:', response.data);
+            const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
 
+            // Store token in localStorage
             if (response.data.token) {
                 localStorage.setItem('token', response.data.token);
-                console.log('Token saved to localStorage');
+                localStorage.setItem('user', JSON.stringify(response.data.user));
             }
 
             return response.data;
         } catch (error) {
-            console.error('Login failed:', error);
-            throw error;
-        }
-
-    },
-
-    // Generate QR code for logged-in user using Axios
-    generateQRCode: async (): Promise<QRCodeResponse> => {
-        try {
-            console.log('Generating QR code...');
-            const response = await api.get<QRCodeResponse>('/auth/qr/generate');
-            console.log('QR code generated:', response.data);
-            return response.data;
-        } catch (error) {
-            console.error('Failed to generate QR code:', error);
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.error || 'Login failed';
+                throw new Error(message);
+            }
             throw error;
         }
     },
 
-    // Login with QR token using Axios
-    loginWithQR: async (qrCredentials: QRLoginCredentials): Promise<AuthResponse> => {
-        try {
-            console.log('Attempting QR login with token:', qrCredentials.token);
-            const response = await api.post<AuthResponse>('/auth/qr/login', qrCredentials);
-            console.log('QR login response:', response.data);
-
+    // Register new user
+    async register(data: RegisterData): Promise<RegisterWithQRResponse> {
+        const attempt = async (path: string) => {
+            const response = await apiClient.post<RegisterWithQRResponse>(path, data);
             if (response.data.token) {
                 localStorage.setItem('token', response.data.token);
-                console.log('QR login token saved to localStorage');
+                localStorage.setItem('user', JSON.stringify(response.data.user));
+            }
+            return response.data;
+        };
+
+        try {
+            return await attempt('/auth/register');
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const status = error.response?.status;
+                if (status === 404 || status === 405) {
+                    // Fallback: some backends expose /register without /auth
+                    try {
+                        return await attempt('/register');
+                    } catch (err2) {
+                        if (axios.isAxiosError(err2)) {
+                            const status2 = err2.response?.status;
+                            const statusText2 = err2.response?.statusText;
+                            const respData2 = err2.response?.data as unknown as ServerErrorResponse;
+                            let serverMsg2: string | undefined;
+                            if (respData2) {
+                                if (typeof respData2 === 'string') serverMsg2 = respData2;
+                                else serverMsg2 = respData2.error || respData2.message;
+                            }
+                            const base2 = serverMsg2 ?? 'Registration failed';
+                            const statusInfo2 = status2 ? ` (HTTP ${status2}${statusText2 ? ` ${statusText2}` : ''})` : '';
+                            throw new Error(`${base2}${statusInfo2}`);
+                        }
+                        throw err2;
+                    }
+                }
+                const statusText = error.response?.statusText;
+                const respData = error.response?.data as unknown as ServerErrorResponse;
+                let serverMsg: string | undefined;
+                if (respData) {
+                    if (typeof respData === 'string') serverMsg = respData;
+                    else serverMsg = respData.error || respData.message;
+                }
+                const base = serverMsg ?? 'Registration failed';
+                const statusInfo = status ? ` (HTTP ${status}${statusText ? ` ${statusText}` : ''})` : '';
+                throw new Error(`${base}${statusInfo}`);
+            }
+            throw error;
+        }
+    },
+
+    // Login with QR code
+    async loginWithQR(credentials: QRLoginCredentials): Promise<AuthResponse> {
+        try {
+            const response = await apiClient.post<AuthResponse>('/auth/qr/validate', credentials);
+
+            // Store token in localStorage
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
             }
 
             return response.data;
         } catch (error) {
-            console.error('QR login failed:', error);
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.error || 'QR login failed';
+                throw new Error(message);
+            }
             throw error;
         }
     },
 
-    register: async (userData: RegisterData): Promise<RegisterResponse> => {
+    // Upload QR code image file
+    async uploadQRCode(file: File): Promise<AuthResponse> {
         try {
-            console.log('Attempting registration with:', userData);
-            const response = await api.post<RegisterResponse>('/auth/register', userData);
-            console.log('Registration response:', response.data);
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await apiClient.post<AuthResponse>('/auth/qr/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
+
+            // Store token in localStorage
+            if (response.data.token) {
+                localStorage.setItem('token', response.data.token);
+                localStorage.setItem('user', JSON.stringify(response.data.user));
+            }
+
             return response.data;
         } catch (error) {
-            console.error('Registration failed:', error);
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.error || 'QR code upload failed';
+                throw new Error(message);
+            }
             throw error;
         }
     },
 
-    getProfile: async (): Promise<User> => {
+    // Generate QR code for logged-in user
+    async generateQRCode(): Promise<QRCodeResponse> {
         try {
-            console.log('Getting user profile');
-            const response = await api.get<User>('/user/profile');
-            console.log('Profile response:', response.data);
+            const response = await apiClient.post<QRCodeResponse>('/auth/qr/generate');
             return response.data;
         } catch (error) {
-            console.error('Get profile failed:', error);
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.error || 'Failed to generate QR code';
+                throw new Error(message);
+            }
             throw error;
         }
     },
 
-    logout: (): void => {
+    // Regenerate QR code
+    async regenerateQRCode(): Promise<QRCodeResponse> {
+        try {
+            const response = await apiClient.post<QRCodeResponse>('/auth/regenerate-qr');
+            return response.data;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const message = error.response?.data?.error || 'Failed to regenerate QR code';
+                throw new Error(message);
+            }
+            throw error;
+        }
+    },
+
+    // Download QR code image
+    async downloadQRCode(token: string): Promise<Blob> {
+        try {
+            const response = await apiClient.get(`/auth/qr/download/${token}`, {
+                responseType: 'blob',
+            });
+            return response.data;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                throw new Error('Failed to download QR code');
+            }
+            throw error;
+        }
+    },
+
+    // Logout
+    logout(): void {
         localStorage.removeItem('token');
-        console.log('Logged out, token removed');
-    }
+        localStorage.removeItem('user');
+    },
+
+    // Check if user is logged in
+    isLoggedIn(): boolean {
+        return !!localStorage.getItem('token');
+    },
+
+    // Get current user from localStorage
+    getCurrentUser(): AuthResponse['user'] | null {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            try {
+                return JSON.parse(userStr);
+            } catch {
+                return null;
+            }
+        }
+        return null;
+    },
 };
 
-export default api;
+// Export the axios instance for custom requests
+export default apiClient;

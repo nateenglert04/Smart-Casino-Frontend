@@ -1,4 +1,4 @@
-// App.tsx
+// App.tsx - Fixed version
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { userApi } from './api';
 import type { User, Theme } from './types';
@@ -11,6 +11,7 @@ import PokerGame from './components/PokerGame';
 import LessonPanel from './components/LessonPanel';
 import ForgotPasswordScreen from './components/ForgetPasswordScreen';
 import QRLoginScreen from './components/QRLoginScreen';
+import QRGenerateScreen from './components/QRGenerateScreen';
 import './App.css';
 
 // Error Boundary Component
@@ -71,6 +72,7 @@ type Screen =
     | 'CREATE_ACCOUNT'
     | 'FORGOT_PASSWORD'
     | 'QR_LOGIN'
+    | 'QR_GENERATE'
     | 'MAIN_MENU'
     | 'GAME_LOBBY'
     | 'BLACKJACK'
@@ -107,13 +109,20 @@ function App() {
             const controller = new AbortController();
             const timeoutId = window.setTimeout(() => controller.abort(), 5000);
 
+            console.log('Checking backend health...');
             const response = await fetch('/api/test/health', {
                 signal: controller.signal,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
             });
 
             clearTimeout(timeoutId);
 
+            console.log('Response status:', response.status);
             const text = await response.text();
+            console.log('Response text:', text);
+
             if (response.ok) {
                 setBackendStatus('Connected ✅');
                 setIsBackendConnected(true);
@@ -122,6 +131,7 @@ function App() {
                 setIsBackendConnected(false);
             }
         } catch (err) {
+            console.error('Backend check failed:', err);
             // Type guard to check if it's an AbortError
             if (err instanceof DOMException && err.name === 'AbortError') {
                 setBackendStatus('Request timed out ❌');
@@ -237,6 +247,11 @@ function App() {
         setError(null);
     }, []);
 
+    const showQRGenerateScreen = useCallback(() => {
+        setCurrentScreen('QR_GENERATE');
+        setError(null);
+    }, []);
+
     const showMainMenu = useCallback((userData: User) => {
         setUser(userData);
         setCurrentScreen('MAIN_MENU');
@@ -247,10 +262,12 @@ function App() {
         setCurrentScreen('LESSONS');
         setError(null);
     }, []);
-    useCallback(() => {
+
+    const showGameLobby = useCallback(() => {
         setCurrentScreen('GAME_LOBBY');
         setError(null);
     }, []);
+
     const playBlackjack = useCallback(() => {
         setCurrentScreen('BLACKJACK');
         setError(null);
@@ -413,8 +430,9 @@ function App() {
                             onForgotPassword={showForgotPasswordScreen}
                             onQRLogin={showQRLoginScreen}
                             theme={theme}
-                            onError={setError}
-                        />
+                            onError={setError} onBack={function (): void {
+                            throw new Error('Function not implemented.');
+                        }}                        />
                     )}
 
                     {currentScreen === 'CREATE_ACCOUNT' && (
@@ -434,12 +452,23 @@ function App() {
                         <QRLoginScreen onBack={showLoginScreen} onLogin={showMainMenu} theme={theme} onError={setError} />
                     )}
 
+                    {currentScreen === 'QR_GENERATE' && user && (
+                        <QRGenerateScreen
+                            user={user}
+                            onBack={returnToMainMenu}
+                            theme={theme}
+                            onError={setError}
+                        />
+                    )}
+
                     {currentScreen === 'MAIN_MENU' && user && (
                         <MainMenuScreen
                             user={user}
                             onPlayBlackjack={playBlackjack}
                             onPlayPoker={playPoker}
                             onShowLessons={showLessons}
+                            onShowGameLobby={showGameLobby}
+                            onShowQRGenerate={showQRGenerateScreen}
                             onLogout={logout}
                             theme={theme}
                         />

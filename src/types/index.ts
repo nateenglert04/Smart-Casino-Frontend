@@ -18,6 +18,38 @@ export interface User {
     qrSecret?: string;  // Added QR secret for user
 }
 
+// Add these to your existing types in types.ts
+export interface RegisterResponse {
+    message: string;
+    user?: User;
+    token?: string;
+    qrLogin?: {
+        qrCode: string;
+        token: string;
+        qrContent: string;
+        downloadUrl: string;
+    };
+}
+
+export interface RegisterWithQRResponse {
+    user: User;
+    token: string;
+    qrData?: {
+        qrCode: string;
+        token: string;
+        qrContent: string;
+        downloadUrl: string;
+    };
+    message?: string;
+}
+export interface QRData {
+    qrCode: string;
+    token: string;
+    qrContent: string;
+    downloadUrl: string;
+}
+
+
 export interface Theme {
     bgDark: string;
     panelBg: string;
@@ -92,10 +124,11 @@ export interface QRLoginCredentials {
 }
 
 export interface QRCodeResponse {
-    qrCode: string;  // base64 encoded image
+    qrCode: string;
     token: string;
-    expiresIn: number;  // seconds until expiry
-    userId: number;
+    qrContent: string;
+    downloadUrl: string;
+    message: string;
 }
 
 export interface QrLoginToken {
@@ -142,7 +175,9 @@ export interface GameStatistics {
     wins: number;
     winRate: number;
 }
-
+export interface RegisterWithQRResponse extends AuthResponse {
+    qrData?: QRData;
+}
 // User session information
 export interface UserSession {
     user: User;

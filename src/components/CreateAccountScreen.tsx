@@ -1,8 +1,9 @@
-// components/CreateAccountScreen.tsx
+// components/CreateAccountScreen.tsx - Corrected version with TypeScript fixes
 import { useState } from 'react';
 import { userApi } from '../api';
-import type { User, Theme } from "../types";
-import {AxiosError} from "axios";
+import type { User, Theme, RegisterWithQRResponse, QRData } from "../types";
+import { AxiosError } from "axios";
+import QRCodeDisplayScreen from './QRCodeDisplayScreen';
 
 interface CreateAccountScreenProps {
     onBack: () => void;
@@ -11,7 +12,12 @@ interface CreateAccountScreenProps {
     onError: (error: string) => void;
 }
 
-const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogin, theme, onError}) => {
+const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({
+                                                                     onBack,
+                                                                     onLogin,
+                                                                     theme,
+                                                                     onError
+                                                                 }) => {
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -21,6 +27,9 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogi
         securityAnswers: ['', '', '']
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [showQRCode, setShowQRCode] = useState(false);
+    const [qrData, setQrData] = useState<QRData | null>(null);
+    const [registeredUser, setRegisteredUser] = useState<User | null>(null);
 
     const securityQuestions = [
         "What was the name of your first pet?",
@@ -52,47 +61,90 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogi
         setIsLoading(true);
 
         try {
-            // Register the user with email
-            await userApi.register({
+            const registerResponse: RegisterWithQRResponse = await userApi.register({
                 username: formData.username,
                 password: formData.password,
                 email: formData.email,
                 enableQR: formData.enableQR
             });
-            onError('Account created successfully!');
 
-            // Now log in with the created account
-            const loginResponse = await userApi.login({
-                username: formData.username,
-                password: formData.password
-            });
+            const user: User = {
+                id: registerResponse.user.id,
+                username: registerResponse.user.username,
+                email: registerResponse.user.email,
+                balance: registerResponse.user.balance ?? 1000,
+                token: registerResponse.token || ''
+            };
 
-            if (loginResponse?.user && loginResponse?.token) {
-                const user: User = {
-                    id: loginResponse.user.id,
-                    username: loginResponse.user.username,
-                    email: loginResponse.user.email,
-                    balance: loginResponse.user.balance ?? 0,
-                    token: loginResponse.token
-                };
-                onLogin(user);
+            setRegisteredUser(user);
+
+            if (formData.enableQR && registerResponse.qrData) {
+                setQrData(registerResponse.qrData);
+                setShowQRCode(true);
+                onError('Account created successfully! QR code generated.');
             } else {
-                onError('Account created but login failed');
+                onLogin(user);
+                onError('Account created successfully!');
             }
         } catch (error: unknown) {
+            console.error('Full registration error:', error);
+
             let message = 'Registration failed. Please try again.';
+            let statusInfo = '';
 
             if (error instanceof AxiosError) {
-                console.error('Registration error details:', error.response?.data);
-                message = error.response?.data?.error ||
-                    error.response?.data?.details ||
-                    error.response?.data?.message ||
-                    message;
+                const status = error.response?.status;
+                const statusText = error.response?.statusText;
+                statusInfo = status ? ` (HTTP ${status}${statusText ? ` ${statusText}` : ''})` : '';
+
+                console.error('Registration AxiosError details:', {
+                    status,
+                    statusText,
+                    data: error.response?.data,
+                    headers: error.response?.headers
+                });
+
+                if (error.response?.data) {
+                    // Fix: Use proper type instead of 'any'
+                    const errorData = error.response.data;
+                    if (typeof errorData === 'string') {
+                        message = errorData;
+                    } else if (errorData && typeof errorData === 'object') {
+                        // Type-safe property access
+                        if ('error' in errorData && typeof errorData.error === 'string') {
+                            message = errorData.error;
+                        } else if ('message' in errorData && typeof errorData.message === 'string') {
+                            message = errorData.message;
+                        } else {
+                            try {
+                                message = JSON.stringify(errorData);
+                            } catch {
+                                message = 'Unknown error format';
+                            }
+                        }
+                    } else {
+                        message = 'Unknown error format';
+                    }
+                } else if (error.request) {
+                    console.error('No response received:', error.request);
+                    message = 'No response from server. Check if backend is running.';
+                } else if (error.message) {
+                    message = error.message;
+                }
+            } else if (error instanceof Error) {
+                message = error.message;
             }
 
-            onError(`Registration failed: ${message}`);
+            const finalMsg = message.startsWith('Registration failed') ? `${message}${statusInfo}` : `Registration failed: ${message}${statusInfo}`;
+            onError(finalMsg);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleProceedToMainMenu = () => {
+        if (registeredUser) {
+            onLogin(registeredUser);
         }
     };
 
@@ -102,6 +154,20 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogi
         }
     };
 
+    // Show QR code screen if registration was successful with QR
+    if (showQRCode && qrData && registeredUser) {
+        return (
+            <QRCodeDisplayScreen
+                user={registeredUser}
+                qrData={qrData}
+                onProceed={handleProceedToMainMenu}
+                theme={theme}
+                onError={onError}
+            />
+        );
+    }
+
+    // Show registration form
     return (
         <div style={{
             maxWidth: '600px',
@@ -196,19 +262,34 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogi
                         aria-label="Confirm Password"
                     />
 
-                    <label style={{color: theme.textColor, display: 'flex', alignItems: 'center', gap: '10px'}}>
+                    <label style={{
+                        color: theme.textColor,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px',
+                        backgroundColor: '#3C3C3C',
+                        borderRadius: '8px',
+                        border: `2px solid ${theme.accent}`
+                    }}>
                         <input
                             type="checkbox"
                             checked={formData.enableQR}
                             onChange={(e) => setFormData({...formData, enableQR: e.target.checked})}
                             disabled={isLoading}
-                            aria-label="Enable QR Code Login"
+                            aria-label="Generate QR Code for Login"
                         />
-                        Enable QR Code Login
+                        <div>
+                            <div style={{fontWeight: 'bold'}}>Generate QR Code for Login</div>
+                            <div style={{fontSize: '12px', color: theme.muted}}>
+                                Get a QR code for quick login on other devices
+                            </div>
+                        </div>
                     </label>
                 </div>
             </div>
 
+            {/* Security Questions Section */}
             <div style={{
                 backgroundColor: theme.panelBg,
                 padding: '25px',
@@ -250,6 +331,34 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogi
                 </div>
             </div>
 
+            {/* QR Code Benefits Info */}
+            {formData.enableQR && (
+                <div style={{
+                    backgroundColor: '#3399FF20',
+                    padding: '15px',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                    border: `1px solid ${theme.accent}`
+                }}>
+                    <h3 style={{color: theme.textColor, marginBottom: '10px'}}>
+                        🔐 QR Code Benefits:
+                    </h3>
+                    <ul style={{
+                        color: theme.muted,
+                        fontSize: '14px',
+                        paddingLeft: '20px',
+                        margin: 0,
+                        lineHeight: '1.6'
+                    }}>
+                        <li>Quick login on multiple devices</li>
+                        <li>No need to remember passwords on trusted devices</li>
+                        <li>Enhanced security with one-time use codes</li>
+                        <li>Can be saved as an image for future use</li>
+                        <li>Works even if you forget your password</li>
+                    </ul>
+                </div>
+            )}
+
             <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
                 <button
                     onClick={handleSubmit}
@@ -262,10 +371,30 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogi
                         borderRadius: '8px',
                         fontSize: '16px',
                         fontWeight: 'bold',
-                        cursor: isLoading ? 'not-allowed' : 'pointer'
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px'
                     }}
                 >
-                    {isLoading ? 'CREATING ACCOUNT...' : 'Create Account'}
+                    {isLoading ? (
+                        <>
+                            <div style={{
+                                width: '16px',
+                                height: '16px',
+                                border: '2px solid transparent',
+                                borderTop: `2px solid ${theme.textColor}`,
+                                borderRadius: '50%',
+                                animation: 'spin 1s linear infinite'
+                            }} />
+                            CREATING ACCOUNT...
+                        </>
+                    ) : formData.enableQR ? (
+                        'Create Account with QR Code'
+                    ) : (
+                        'Create Account'
+                    )}
                 </button>
 
                 <button
@@ -284,6 +413,13 @@ const CreateAccountScreen: React.FC<CreateAccountScreenProps> = ({onBack, onLogi
                     Back to Login
                 </button>
             </div>
+
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 };
