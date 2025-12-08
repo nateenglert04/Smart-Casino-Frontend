@@ -80,7 +80,7 @@ const CreateAccountPage = () => {
       
       if (response.token && response.user) {
          login(response.token, response.user);
-         navigate('/dashboard'); 
+         navigate('/'); 
       } else {
          navigate('/login');
       }
