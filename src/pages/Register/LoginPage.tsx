@@ -47,7 +47,6 @@ const LoginPage = () => {
       
       const client = SmartCasinoClient.getInstance();
       
-      // Send to backend endpoint /upload
       const response = await client.uploadLoginQr(file);
 
       if (response.token && response.user) {

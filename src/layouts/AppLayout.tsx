@@ -24,7 +24,7 @@ export default function AppLayout() {
   const getInitials = (name: string) => name ? name.substring(0, 2).toUpperCase() : 'SC';
 
   const navItems = [
-    { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+    { label: 'Dashboard', icon: LayoutDashboard, path: '/' },
     { label: 'Card Games', icon: Spade, path: '/games' },
     { label: 'Lessons', icon: BookOpen, path: '/lessons' },
     { label: 'Leaderboard', icon: Trophy, path: '/leaderboard' },

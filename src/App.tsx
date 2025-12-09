@@ -6,6 +6,9 @@ import LoginPage from "./pages/Register/LoginPage";
 import CreateAccountPage from "./pages/Register/CreateAccountPage";
 import AppLayout from './layouts/AppLayout';
 import Dashboard from './pages/Dashboard';
+import GamesHome from "./pages/Games/GamesHomePage";
+import PokerPage from "./pages/Games/PokerPage";
+import BlackjackPage from "./pages/Games/BlackjackPage";
 
 function App() {
 
@@ -23,9 +26,13 @@ function App() {
               {/* Any route placed inside here requires login */}
               <Route path="/" element={<AppLayout />}>
                 <Route index element={<Dashboard />} />
+                <Route path="games">
+                  <Route index element={<GamesHome />} />
+                  <Route path="blackjack" element={<BlackjackPage />} />
+                  <Route path="poker" element={<PokerPage />} />
+                </Route>
                 {/*Will need to implement these pages*/}
-                {/*<Route path="games" element={<Games />} />
-                <Route path="lessons" element={<Lessons />} />
+                {/*<Route path="lessons" element={<Lessons />} />
                 <Route path="leaderboard" element={<Leaderboard />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="account" element={<Account />} />*/}

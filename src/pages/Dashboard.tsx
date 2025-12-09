@@ -25,8 +25,7 @@ export default function Dashboard() {
         
         {/* Play Card */}
         <Card className="group relative overflow-hidden border-sidebar-primary/20 hover:border-sidebar-primary transition-colors">
-            {/* Using your custom CSS class here for the header background */}
-          <div className="absolute inset-0 bg-felt-gradient opacity-0 group-hover:opacity-10 transition-opacity" />
+          <div className="absolute inset-0 bg-felt-gradient opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Spade className="h-5 w-5 text-sidebar-primary" />
@@ -46,7 +45,7 @@ export default function Dashboard() {
 
         {/* Learn Card */}
         <Card className="group relative overflow-hidden border-sidebar-primary/20 hover:border-sidebar-primary transition-colors">
-          <div className="absolute inset-0 bg-felt-gradient opacity-0 group-hover:opacity-10 transition-opacity" />
+          <div className="absolute inset-0 bg-felt-gradient opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-sidebar-primary" />
@@ -66,7 +65,7 @@ export default function Dashboard() {
 
         {/* Leaderboard Card */}
         <Card className="group relative overflow-hidden border-sidebar-primary/20 hover:border-sidebar-primary transition-colors">
-          <div className="absolute inset-0 bg-felt-gradient opacity-0 group-hover:opacity-10 transition-opacity" />
+          <div className="absolute inset-0 bg-felt-gradient opacity-0 group-hover:opacity-10 transition-opacity pointer-events-none" />
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-500" />
@@ -85,7 +84,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Recent Stats or History (Placeholder) */}
+      {/*Statistics*/}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-3 bg-muted/40">
            <CardHeader>
@@ -101,11 +100,6 @@ export default function Dashboard() {
                         <Wallet className="w-4 h-4 mr-2" />
                         <span className="font-bold text-xl">{user?.balance?.toLocaleString()} Credits</span>
                     </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                    <span className="text-sm">User ID</span>
-                    <span className="font-mono text-xs text-muted-foreground">#{user?.id}</span>
                 </div>
             </div>
           </CardContent>
