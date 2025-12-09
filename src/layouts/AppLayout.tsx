@@ -104,7 +104,7 @@ export default function AppLayout() {
             <div className="hidden md:flex items-center px-3 py-1.5 bg-sidebar-primary/10 rounded-full border border-sidebar-primary/20">
                 <Wallet className="w-4 h-4 mr-2 text-sidebar-primary" />
                 <span className="font-bold text-sm text-foreground">
-                    ${user?.balance?.toLocaleString() ?? 0}
+                    {user?.balance?.toLocaleString() ?? 0} Credits
                 </span>
             </div>
 

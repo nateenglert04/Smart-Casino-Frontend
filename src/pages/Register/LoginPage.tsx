@@ -165,15 +165,15 @@ const LoginPage = () => {
           </div>
         </CardHeader>
 
-        {/* Global Error Message */}
-        {error && (
-          <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20">
-            <AlertCircle className="h-4 w-4" />
-            <span>{error}</span>
-          </div>
-        )}
-
         <CardContent className="space-y-4 pt-4">
+
+          {/* Global Error Message */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/10 rounded-md border border-destructive/20">
+              <AlertCircle className="h-4 w-4" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Standard Login Form */}
           {loginMethod === 'standard' && (

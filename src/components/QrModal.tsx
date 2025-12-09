@@ -19,25 +19,6 @@ export function QrAccessModal() {
   const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const generateCode = async () => {
-    try {
-      setLoading(true);
-      const client = SmartCasinoClient.getInstance();
-
-      const response = await client.generateUserQr();
-      
-      if (response.token) {
-        setQrToken(response.token);
-        // The generate endpoint usually returns a base64 preview for UI
-        setQrPreview(response.qrCode); 
-      }
-    } catch (error) {
-      console.error("Failed to generate QR", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const loadExistingCode = async () => {
     try {
       setLoading(true);

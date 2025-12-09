@@ -16,7 +16,7 @@ export default function Dashboard() {
             Welcome back, {user?.username || 'Player'}.
         </h2>
         <p className="text-muted-foreground">
-          Ready to hit the tables? Your current balance is <span className="text-sidebar-primary font-bold">${user?.balance?.toLocaleString()}</span> (<strong>*Disclaimer*</strong> This is not real money).
+          Ready to hit the tables? Your current balance is <span className="text-sidebar-primary font-bold">{user?.balance?.toLocaleString()} Credits</span>.
         </p>
       </div>
 
@@ -99,7 +99,7 @@ export default function Dashboard() {
                     
                     <div className="flex items-center text-emerald-600 dark:text-emerald-400">
                         <Wallet className="w-4 h-4 mr-2" />
-                        <span className="font-bold text-xl">${user?.balance?.toLocaleString()}</span>
+                        <span className="font-bold text-xl">{user?.balance?.toLocaleString()} Credits</span>
                     </div>
                 </div>
                 
