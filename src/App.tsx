@@ -29,6 +29,7 @@ class GameErrorBoundary extends React.Component<{ children: React.ReactNode }, {
         console.error('Game Error:', error, errorInfo);
     }
 
+
     render() {
         if (this.state.hasError) {
             return (
@@ -190,6 +191,18 @@ function App() {
             } catch (err) {
                 console.error('Failed to parse saved user:', err);
                 localStorage.removeItem('smartCasinoUser');
+            }
+        }
+
+        if (user) {
+            // Initialize ranking for the user
+            const storedXp = localStorage.getItem(`user_${user.id}_xp`);
+            if (!storedXp) {
+                // Set initial XP for new users
+                localStorage.setItem(`user_${user.id}_xp`, '0');
+                localStorage.setItem(`user_${user.id}_games`, '0');
+                localStorage.setItem(`user_${user.id}_wins`, '0');
+                localStorage.setItem(`user_${user.id}_lessons`, '0');
             }
         }
 

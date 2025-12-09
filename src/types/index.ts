@@ -18,6 +18,50 @@ export interface User {
     qrSecret?: string;  // Added QR secret for user
 }
 
+
+export interface Probabilities {
+    bustIfHit: number;
+    winChance: number;
+    pushChance: number;
+}
+
+export interface BlackjackStats {
+    gamesPlayed: number;
+    gamesWon: number;
+    winPercentage: number;
+    totalWinnings: number;
+    bestStreak: number;
+}
+
+export type BlackjackResult = "WON" | "LOST" | "PUSH";
+
+export interface BlackjackApiResponse {
+    gameId?: number;
+    playerHand?: Card[];
+    dealerHand?: Card[];
+    playerValue?: number;
+    dealerValue?: number;
+    dealerUpCardValue?: number;
+    gameState?: GameState;
+    result?: BlackjackResult;
+    winnings?: number;
+    newBalance?: number;
+    remainingBalance?: number;
+    feedback?: string;
+    probabilities?: Probabilities;
+    xpAwarded?: number;
+}
+
+export interface BlackjackGameState {
+    playerHand: Card[];
+    dealerHand: Card[];
+    gameState: GameState;
+    playerValue: number;
+    dealerValue: number;
+    betAmount: number;
+    balance: number;
+}
+
 // Add these to your existing types in types.ts
 export interface RegisterResponse {
     message: string;
@@ -184,4 +228,34 @@ export interface UserSession {
     sessionToken: string;
     qrToken?: string;
     expiresAt: Date;
+}
+
+export interface RankProgress {
+    currentRank: string;
+    currentXp: number;
+    nextRank: string;
+    xpToNextRank: number;
+    progressPercentage: number;
+}
+
+export interface UserRanking {
+    rank: string;
+    level: number;
+    xp: number;
+    rankProgress: RankProgress;
+    gamesPlayed: number;
+    winRate: number;
+    lessonsCompleted: number;
+}
+
+export interface LeaderboardEntry {
+    userId: number;
+    username: string;
+    xp: number;
+    rank: string;
+    level: number;
+    gamesPlayed: number;
+    lessonsCompleted: number;
+    winRate: number;
+    position: number;
 }

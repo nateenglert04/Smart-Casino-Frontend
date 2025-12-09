@@ -1,15 +1,16 @@
 // components/LoginScreen.tsx
-import { useState } from 'react';
-import { userApi } from '../api';
-import type { Theme, User } from '../types';
+import {useState} from 'react';
+import {userApi} from '../api';
+import type {Theme, User} from '../types';
 
 interface LoginScreenProps {
-    onLogin: (user: User) => void;
-    onCreateAccount: () => void;
-    onForgotPassword: () => void;
-    onQRLogin: () => void;
-    theme: Theme;
-    onError: (error: string) => void;
+    onLogin: (user: User) => void,
+    onCreateAccount: () => void,
+    onForgotPassword: () => void,
+    onQRLogin: () => void,
+    theme: Theme,
+    onError: (error: string) => void,
+    onBack?: () => void
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({
@@ -85,7 +86,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
                 </h1>
 
                 <form onSubmit={handleSubmit}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '15px'}}>
                         <input
                             type="text"
                             placeholder="Username"
