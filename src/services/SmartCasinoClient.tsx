@@ -70,6 +70,37 @@ export class SmartCasinoClient {
     return response.data;
   }
 
+  // QR Code Login Service Endpoints
+
+  public async uploadLoginQr(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await this.client.post('/auth/qr/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  public async generateUserQr() {
+    const response = await this.client.post('/auth/qr/generate');
+    return response.data;
+  }
+
+  public async regenerateUserQr() {
+    const response = await this.client.post('/auth/regenerate-qr');
+    return response.data;
+  }
+
+  public async downloadQrImage(token: string): Promise<Blob> {
+    const response = await this.client.get(`/auth/qr/download/${token}`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  }
+
 
   // Will need to implement simple crud operations for user data
   /*

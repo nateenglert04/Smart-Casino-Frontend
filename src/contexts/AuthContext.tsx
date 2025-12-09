@@ -31,8 +31,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check for existing token and user data in localStorage
-    const storedToken = sessionStorage.getItem('smartcasino_token');
-    const storedUser = sessionStorage.getItem('smartcasino_user');
+    const storedToken = localStorage.getItem('smartcasino_token');
+    const storedUser = localStorage.getItem('smartcasino_user');
 
     if (storedToken && storedUser) {
       try {
@@ -44,13 +44,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(parsedUser);
       ``} else {
           // If data is partial/corrupt, clear it
-          sessionStorage.removeItem('smartcasino_token');
-          sessionStorage.removeItem('smartcasino_user');
+          localStorage.removeItem('smartcasino_token');
+          localStorage.removeItem('smartcasino_user');
       }
       } catch (error) {
         console.error('Error parsing stored user data:', error);
-        sessionStorage.removeItem('smartcasino_token');
-        sessionStorage.removeItem('smartcasino_user');
+        localStorage.removeItem('smartcasino_token');
+        localStorage.removeItem('smartcasino_user');
       }
     }
     setLoading(false);
@@ -62,15 +62,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(newUser);
     
     // Save to LocalStorage for persistence
-    sessionStorage.setItem('smartcasino_token', newToken);
-    sessionStorage.setItem('smartcasino_user', JSON.stringify(newUser));
+    localStorage.setItem('smartcasino_token', newToken);
+    localStorage.setItem('smartcasino_user', JSON.stringify(newUser));
   };
 
   const logout = () => {
     setToken(null);
     setUser(null);
-    sessionStorage.removeItem('smartcasino_token');
-    sessionStorage.removeItem('smartcasino_user');
+    localStorage.removeItem('smartcasino_token');
+    localStorage.removeItem('smartcasino_user');
     
     window.location.href = '/login';
   };

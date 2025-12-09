@@ -14,6 +14,7 @@ import {
 } from "../components/ui/dropdown-menu"
 import smartCasinoLogo from '../assets/smart-casino.png';
 import { useAuth } from '../contexts/AuthContext';
+import { QrAccessModal } from '../components/QrModal';
 
 
 export default function AppLayout() {
@@ -99,6 +100,7 @@ export default function AppLayout() {
 
           {/* User Account Dropdown */}
           <div className="flex items-center gap-4 ml-auto">
+            <QrAccessModal />
             <div className="hidden md:flex items-center px-3 py-1.5 bg-sidebar-primary/10 rounded-full border border-sidebar-primary/20">
                 <Wallet className="w-4 h-4 mr-2 text-sidebar-primary" />
                 <span className="font-bold text-sm text-foreground">
