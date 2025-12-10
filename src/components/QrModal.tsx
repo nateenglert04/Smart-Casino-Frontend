@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../components/ui/dialog';
-import { SmartCasinoClient } from '../services/SmartCasinoClient';
+import { AuthenticationService } from '../services/AuthenticationService';
 import { useAuth } from '../contexts/AuthContext';
 
 export function QrAccessModal() {
@@ -22,9 +22,7 @@ export function QrAccessModal() {
   const loadExistingCode = async () => {
     try {
       setLoading(true);
-      const client = SmartCasinoClient.getInstance();
-      // Calls /qr/generate (Safe)
-      const response = await client.generateUserQr();
+      const response = await AuthenticationService.generateUserQr();
       
       if (response && response.token && response.qrCode) {
         setQrToken(response.token);
@@ -40,8 +38,7 @@ export function QrAccessModal() {
   const handleRegenerate = async () => {
     try {
       setLoading(true);
-      const client = SmartCasinoClient.getInstance();
-      const response = await client.regenerateUserQr();
+      const response = await AuthenticationService.regenerateUserQr();
       
       if (response && response.token && response.qrCode) {
         setQrToken(response.token);
@@ -65,8 +62,7 @@ export function QrAccessModal() {
     if (!qrToken) return;
     
     try {
-      const client = SmartCasinoClient.getInstance();
-      const blob = await client.downloadQrImage(qrToken);
+      const blob = await AuthenticationService.downloadQrImage(qrToken);
       
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

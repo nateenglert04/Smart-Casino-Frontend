@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import GamesHome from "./pages/Games/GamesHomePage";
 import PokerPage from "./pages/Games/PokerPage";
 import BlackjackPage from "./pages/Games/BlackjackPage";
+import ResetPasswordPage from "./pages/Register/ResetPasswordPage";
 
 function App() {
 
@@ -20,6 +21,7 @@ function App() {
             {/* Public Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/createAccount" element={<CreateAccountPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
             {/* Protected Routes Wrapper */}
             <Route element={<ProtectedRoute />}>

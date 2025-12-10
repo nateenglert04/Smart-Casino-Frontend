@@ -1,20 +1,14 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, User, AlertCircle, CheckCircle2, ArrowLeft, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, User, AlertCircle, ArrowLeft, Mail } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card';
 import smartCasinoLogo from '../../assets/smart-casino.png';
-import { SmartCasinoClient } from '../../services/SmartCasinoClient';
+import { AuthenticationService } from '../../services/AuthenticationService';
 import { useAuth } from '../../contexts/AuthContext';
+import { RequirementItem } from '../../components/RequirementItem';
 
 const CreateAccountPage = () => {
   const navigate = useNavigate();
@@ -69,14 +63,13 @@ const CreateAccountPage = () => {
 
     try {
       setIsLoading(true);
-      const client = SmartCasinoClient.getInstance();
       const registerPayload = {
         username: formData.username,
         email: formData.email,
         password: formData.password
       };
 
-      const response = await client.registerUser(registerPayload);
+      const response = await AuthenticationService.registerUser(registerPayload);
       
       if (response.token && response.user) {
          login(response.token, response.user);
@@ -252,17 +245,6 @@ const CreateAccountPage = () => {
           </CardFooter>
         </form>
       </Card>
-    </div>
-  );
-}
-
-function RequirementItem({ met, text }: { met: boolean; text: string }) {
-  return (
-    <div className={`flex items-center gap-2 text-xs transition-colors duration-300 ${
-      met ? 'text-green-600 dark:text-green-400 font-medium' : 'text-muted-foreground'
-    }`}>
-      <CheckCircle2 className={`h-3 w-3 ${met ? 'opacity-100' : 'opacity-30'}`} />
-      <span>{text}</span>
     </div>
   );
 }

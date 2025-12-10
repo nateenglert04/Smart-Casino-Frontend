@@ -14,7 +14,7 @@ import {
 } from '../../components/ui/card';
 import smartCasinoLogo from '../../assets/smart-casino.png';
 import { useAuth } from '../../contexts/AuthContext';
-import { SmartCasinoClient } from '../../services/SmartCasinoClient';
+import { AuthenticationService } from '../../services/AuthenticationService';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -45,9 +45,7 @@ const LoginPage = () => {
       setIsLoading(true);
       setError('');
       
-      const client = SmartCasinoClient.getInstance();
-      
-      const response = await client.uploadLoginQr(file);
+      const response = await AuthenticationService.uploadLoginQr(file);
 
       if (response.token && response.user) {
         login(response.token, response.user);
@@ -105,8 +103,7 @@ const LoginPage = () => {
       setIsLoading(true);
       console.log('Logging in with:', formData);
       
-      const client = SmartCasinoClient.getInstance();
-      const response = await client.loginUser(formData);
+      const response = await AuthenticationService.loginUser(formData);
       
       if (response.token && response.user) {
         login(response.token, response.user);
@@ -191,7 +188,16 @@ const LoginPage = () => {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link 
+                    to="/reset-password" 
+                    className="text-xs font-medium text-primary hover:underline underline-offset-4"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
+
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
