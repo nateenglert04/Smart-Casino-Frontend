@@ -36,7 +36,6 @@ function App() {
                 {/*Will need to implement these pages*/}
                 {/*<Route path="lessons" element={<Lessons />} />
                 <Route path="leaderboard" element={<Leaderboard />} />
-                <Route path="settings" element={<Settings />} />
                 <Route path="account" element={<Account />} />*/}
               </Route>
             </Route>

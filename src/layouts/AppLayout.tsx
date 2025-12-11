@@ -1,26 +1,21 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
-import { LayoutDashboard, Spade, BookOpen, Trophy, Settings, Menu, User as UserIcon, LogOut, Wallet } from 'lucide-react';
+import { LayoutDashboard, Spade, BookOpen, Trophy, Settings, Menu, User as UserIcon, LogOut, Wallet, Laptop, Sun, Moon, ChevronLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "../components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, } from "../components/ui/dropdown-menu"
 import smartCasinoLogo from '../assets/smart-casino.png';
 import { useAuth } from '../contexts/AuthContext';
 import { QrAccessModal } from '../components/QrModal';
-
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function AppLayout() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const { user, logout } = useAuth();
+  const { setTheme } = useTheme();
+
   const getInitials = (name: string) => name ? name.substring(0, 2).toUpperCase() : 'SC';
 
   const navItems = [
@@ -61,11 +56,6 @@ export default function AppLayout() {
           </NavLink>
         ))}
       </nav>
-
-      {/* Footer / Version info */}
-      <div className="p-4 border-t border-sidebar-border text-xs text-sidebar-foreground/50 text-center">
-        Smart Casino v1.0
-      </div>
     </div>
   );
 
@@ -128,24 +118,71 @@ export default function AppLayout() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                    <Link to="/account" className="cursor-pointer">
-                        <UserIcon className="mr-2 h-4 w-4" />
+                    <Link to="/account" className="cursor-pointer flex justify-between items-center">
+                      <div className="flex items-center">
+                        <div className="w-4 mr-2" />
                         <span>Account Info</span>
+                      </div>
+                      <UserIcon className="ml-2 h-4 w-4" />
                     </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                    <Link to="/settings" className="cursor-pointer">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Preferences</span>
-                    </Link>
-                </DropdownMenuItem>
+
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="cursor-pointer [&>svg:last-child]:hidden flex justify-between items-center">
+                    <div className="flex items-center">
+                      <ChevronLeft className="mr-2 h-4 w-4" />
+                      <span>Preferences</span>
+                    </div>
+                    <Settings className="ml-2 h-4 w-4" />
+                  </DropdownMenuSubTrigger>
+                  
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent alignOffset={-5}>
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger className="cursor-pointer [&>svg:last-child]:hidden flex justify-between items-center">
+                          <div className="flex items-center">
+                            <ChevronLeft className="mr-2 h-4 w-4" />
+                            <span className="ml-2">Theme</span>
+                          </div>
+                          <div className="relative ml-2 h-4 w-4">
+                            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+                            <Moon className="absolute top-0 h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                          </div>
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuPortal>
+                          <DropdownMenuSubContent alignOffset={-5} collisionPadding={{ right: 10000 }}>
+                            <DropdownMenuItem onClick={() => setTheme("light")} className="cursor-pointer">
+                              <Sun className="mr-2 h-4 w-4" />
+                              <span>Light</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("dark")} className="cursor-pointer">
+                              <Moon className="mr-2 h-4 w-4" />
+                              <span>Dark</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setTheme("system")} className="cursor-pointer">
+                              <Laptop className="mr-2 h-4 w-4" />
+                              <span>System</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuSubContent>
+                        </DropdownMenuPortal>
+                      </DropdownMenuSub>
+
+                      {/* More Preferences */}
+
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                     onClick={logout} 
-                    className="text-destructive focus:text-destructive cursor-pointer"
+                    className="cursor-pointer text-destructive focus:text-destructive flex justify-between items-center"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                  <div className="flex items-center">
+                    <div className="w-4 mr-2" />
+                    <span>Log out</span>
+                  </div>
+                  <LogOut className="ml-2 h-4 w-4" />
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
