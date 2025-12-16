@@ -1,5 +1,5 @@
 import { SmartCasinoClient } from '../services/SmartCasinoClient';
-import type { Suit, Rank } from '../components/PlayingCard'; // Adjust path as needed
+import type { Suit, Rank } from '../components/PlayingCard';
 
 export interface BackendCard {
   cardId: number;
@@ -20,12 +20,12 @@ export interface BlackjackGameResponse {
   playerHand: BackendCard[];
   dealerHand: BackendCard[];
   playerValue: number;
-  dealerValue?: number; 
+  dealerValue?: number;
   gameState: 'IN_PROGRESS' | 'WON' | 'LOST' | 'PUSH' | 'BLACKJACK';
   betAmount: number;
-  remainingBalance?: number; 
-  newBalance?: number;      
-  userBalance?: number;     
+  remainingBalance?: number;
+  newBalance?: number;
+  userBalance?: number;
   feedback: string;
   probabilities: Probabilities;
   message?: string;
@@ -51,7 +51,17 @@ export interface BlackjackStats {
   winPercentage: number;
   totalWinnings: number;
   bestStreak: number;
-  recentGames: any[];
+  recentGames: RecentGame[];
+  totalGames: number;
+  userBalance?: number;
+}
+
+export interface RecentGame {
+  gameId: number;
+  betAmount: number;
+  result: string;
+  playerHand: BackendCard[];
+  dealerHand: BackendCard[];
 }
 
 export const mapCardData = (backendCard: BackendCard): { suit: Suit; rank: Rank } => {
@@ -65,7 +75,7 @@ export const mapCardData = (backendCard: BackendCard): { suit: Suit; rank: Rank 
   // Map Rank
   let rank: Rank = 'A'; // Default
   const bRank = backendCard.rank.toUpperCase();
-  
+
   if (['JACK', 'QUEEN', 'KING', 'ACE'].includes(bRank)) {
     rank = bRank === 'ACE' ? 'A' : bRank.charAt(0) as Rank;
   } else {
@@ -81,7 +91,7 @@ export const mapCardData = (backendCard: BackendCard): { suit: Suit; rank: Rank 
 
 class BlackjackService {
   private api = SmartCasinoClient.getInstance().client;
-  private baseUrl = '/blackjack';
+  private baseUrl = '/api/blackjack';
 
   // Start a new game
   async startGame(betAmount: number): Promise<BlackjackGameResponse> {
@@ -124,6 +134,14 @@ class BlackjackService {
   // Get User Stats
   async getStats(): Promise<BlackjackStats> {
     const response = await this.api.get<BlackjackStats>(`${this.baseUrl}/stats`);
+    return response.data;
+  }
+
+  // Get leaderboard
+  async getLeaderboard(limit: number = 10): Promise<any> {
+    const response = await this.api.get(`${this.baseUrl}/leaderboard`, {
+      params: { limit }
+    });
     return response.data;
   }
 }
