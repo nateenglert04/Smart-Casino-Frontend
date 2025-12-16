@@ -7,6 +7,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (user: User) => void;
   loading: boolean;
 }
 
@@ -75,12 +76,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     window.location.href = '/login';
   };
 
+  const updateUser = (newUser: User) => {
+    setUser(newUser);
+    localStorage.setItem('smartcasino_user', JSON.stringify(newUser));
+  };
+
   const value = {
     user,
     token,
     isAuthenticated: !!token && !!user,
     login,
     logout,
+    updateUser,
     loading,
   };
 
