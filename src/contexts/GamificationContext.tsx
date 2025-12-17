@@ -6,6 +6,13 @@ interface GamificationContextType {
   rankData: GamificationProfile | null;
   refreshRank: () => Promise<void>;
   loading: boolean;
+  notification: GamificationNotification | null;
+  clearNotification: () => void;
+}
+
+interface GamificationNotification {
+  xpGained: number;
+  newRank: string | null;
 }
 
 const GamificationContext = createContext<GamificationContextType | undefined>(undefined);
@@ -13,7 +20,10 @@ const GamificationContext = createContext<GamificationContextType | undefined>(u
 export function GamificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth(); 
   const [rankData, setRankData] = useState<GamificationProfile | null>(null);
+  const [notification, setNotification] = useState<GamificationNotification | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const clearNotification = () => setNotification(null);
 
   // Function to fetch latest data
   const refreshRank = async () => {
@@ -21,6 +31,20 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     
     try {
       const data = await GamificationService.getPlayerProfile(user.id);
+      if (rankData) {
+        const xpDiff = (data.totalXP as number) - (rankData.totalXP as number);
+        const rankChanged = data.currentRank !== rankData.currentRank;
+
+        if (xpDiff > 0) {
+          setNotification({
+            xpGained: xpDiff,
+            newRank: rankChanged ? (data.currentRank as string) : null
+          });
+
+          setTimeout(() => setNotification(null), 5000);
+        }
+      }
+      
       setRankData(data);
     } catch (error) {
       console.error("Failed to refresh rank:", error);
@@ -38,7 +62,7 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   return (
-    <GamificationContext.Provider value={{ rankData, refreshRank, loading }}>
+    <GamificationContext.Provider value={{ rankData, refreshRank, loading, notification, clearNotification }}>
       {children}
     </GamificationContext.Provider>
   );
