@@ -5,6 +5,7 @@ import { GamificationService, type GamificationProfile } from '../services/Gamif
 interface GamificationContextType {
   rankData: GamificationProfile | null;
   refreshRank: () => Promise<void>;
+  loading: boolean;
 }
 
 const GamificationContext = createContext<GamificationContextType | undefined>(undefined);
@@ -12,6 +13,7 @@ const GamificationContext = createContext<GamificationContextType | undefined>(u
 export function GamificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth(); 
   const [rankData, setRankData] = useState<GamificationProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
   // Function to fetch latest data
   const refreshRank = async () => {
@@ -32,10 +34,11 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     } else {
       setRankData(null);
     }
+    setLoading(false);
   }, [user?.id]);
 
   return (
-    <GamificationContext.Provider value={{ rankData, refreshRank }}>
+    <GamificationContext.Provider value={{ rankData, refreshRank, loading }}>
       {children}
     </GamificationContext.Provider>
   );

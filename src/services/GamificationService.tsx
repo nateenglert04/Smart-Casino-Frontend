@@ -9,6 +9,7 @@ export interface GamificationProfile {
   currentRank: string; // Ranks defined in backend
   xpToNextLevel: number;
   levelProgressPercent: number;
+  winRate: number;
 }
 
 export const GamificationService = {

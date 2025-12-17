@@ -8,9 +8,9 @@ import CreateAccountPage from "./pages/Register/CreateAccountPage";
 import AppLayout from './layouts/AppLayout';
 import Dashboard from './pages/Dashboard';
 import GamesHome from "./pages/Games/GamesHomePage";
-import PokerPage from "./pages/Games/PokerPage";
 import BlackjackPage from "./pages/Games/BlackjackPage";
 import ResetPasswordPage from "./pages/Register/ResetPasswordPage";
+import LeaderboardPage from "./pages/LeaderboardPage";
 
 function App() {
 
@@ -33,11 +33,10 @@ function App() {
                   <Route path="games">
                     <Route index element={<GamesHome />} />
                     <Route path="blackjack" element={<BlackjackPage />} />
-                    <Route path="poker" element={<PokerPage />} />
                   </Route>
+                  <Route path="leaderboard" element={<LeaderboardPage />} />
                   {/*Will need to implement these pages*/}
                   {/*<Route path="lessons" element={<Lessons />} />
-                  <Route path="leaderboard" element={<Leaderboard />} />
                   <Route path="account" element={<Account />} />*/}
                 </Route>
               </Route>

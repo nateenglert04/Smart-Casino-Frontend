@@ -28,7 +28,7 @@ const gamesData = [
     accent: 'bg-[hsl(var(--chart-3))]/10',
     tags: ['Multiplayer', 'High Stakes'],
     stats: { minBet: 50, payout: 'Pot' },
-    status: 'active'
+    status: ''
   },
 ];
 
