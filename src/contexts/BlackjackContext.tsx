@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode, useEffect, useCallback } from 'react';
 import { blackjackService, mapCardData, type BlackjackGameResponse, type Probabilities } from '../services/BlackjackService'; 
 import { type Suit, type Rank } from '../components/PlayingCard';
+import { useGamification } from './GamificationContext';
 
 export interface CardData {
   suit: Suit;
@@ -63,6 +64,7 @@ const INITIAL_STATE: GameState = {
 const BlackjackContext = createContext<BlackjackContextType | undefined>(undefined);
 
 export function BlackjackProvider({ children }: { children: ReactNode }) {
+  const { refreshRank } = useGamification();
   const [gameState, setGameState] = useState<GameState>(INITIAL_STATE);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notification, setNotification] = useState<string | null>(null);
@@ -103,6 +105,10 @@ export function BlackjackProvider({ children }: { children: ReactNode }) {
       feedback: response.feedback,
       probabilities: response.probabilities
     }));
+
+    if (isFinished) {
+      refreshRank();
+    }
   };
 
   const setBalance = useCallback((amount: number) => {
