@@ -204,12 +204,12 @@ function BlackjackGameContent() {
                     <span className="text-cyan-100">AI Odds:</span>
                   </div>
 
-                  <span className={(gameState.probabilities['bustChance'] ?? 0) > 50 ? "text-red-400" : "text-emerald-400"}>
-                    Bust: {(gameState.probabilities['bustChance'] ?? 0).toFixed(1)}%
+                  <span className={(gameState.probabilities['Bust Chance'] ?? 0) > 50 ? "text-red-400" : "text-emerald-400"}>
+                    Bust: {(gameState.probabilities['Bust Chance'] ?? 0).toFixed(1)}%
                   </span>
                   <span className="text-white/20">|</span>
-                  <span className={(gameState.probabilities['winChance'] ?? 0) > 50 ? "text-emerald-400" : "text-yellow-400"}>
-                    Win: {(gameState.probabilities['winChance'] ?? 0).toFixed(1)}%
+                  <span className={(gameState.probabilities['Win Probability'] ?? 0) > 50 ? "text-emerald-400" : "text-yellow-400"}>
+                    Win: {(gameState.probabilities['Win Probability'] ?? 0).toFixed(1)}%
                   </span>
                 </div>
               )}
