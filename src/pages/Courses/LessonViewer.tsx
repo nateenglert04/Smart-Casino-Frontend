@@ -79,7 +79,7 @@ export default function LessonViewer() {
     <div className="flex h-[calc(100vh-8rem)] gap-6 animate-in fade-in duration-500">
       
       {/* Sidebar - Lesson List */}
-      <Card className="w-80 flex flex-col h-full border-sidebar-border bg-card/50 backdrop-blur-sm hidden md:flex">
+      <Card className="w-80 flex flex-col h-full border-sidebar-border bg-card/50 backdrop-blur-sm md:flex">
         <CardHeader className="pb-4 border-b">
           <Button variant="ghost" size="sm" onClick={() => navigate('/lessons')} className="w-fit mb-2 -ml-2 text-muted-foreground">
              <ArrowLeft className="w-4 h-4 mr-1" /> Back

@@ -28,6 +28,11 @@ export const AuthenticationService = {
     return response.data;
   },
 
+  updateProfile: async (data: { username: string; email: string }) => {
+    const response = await AuthenticationService.getClient().put('/auth/profile', data);
+    return response.data;
+  },
+
   // QR Code Login Service Endpoints
 
   uploadLoginQr: async (file: File) => {
