@@ -14,6 +14,7 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import CoursesHomePage from "./pages/Courses/CoursesHomePage";
 import LessonViewer from "./pages/Courses/LessonViewer";
 import AccountPage from "./pages/AccountPage";
+import SettingsPage from "./pages/SettingsPage";
 
 function App() {
 
@@ -43,6 +44,7 @@ function App() {
                     <Route path=":courseId" element={<LessonViewer />} />
                   </Route>
                   <Route path="account" element={<AccountPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
                 </Route>
               </Route>
 
