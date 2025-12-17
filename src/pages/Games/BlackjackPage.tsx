@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, DollarSign, Shield, Layers, BrainCircuit } from 'lucide-react';
+import { ArrowLeft, RefreshCw, DollarSign, Shield, Layers, BrainCircuit, AlertCircle, Info } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { PlayingCard } from '../../components/PlayingCard';
@@ -37,11 +37,17 @@ function BlackjackGameContent() {
     }
   }, [gameState.balance, token, user, login]);
 
+  const getValue = (rank: string) => {
+    if (['J', 'Q', 'K', '10'].includes(rank)) return 10;
+    if (rank === 'A') return 11;
+    return parseInt(rank);
+  };
+
   const renderBettingPhase = () => (
     <div className="flex flex-col items-center justify-center gap-8 animate-in fade-in zoom-in duration-300 w-full">
       <div className="text-center space-y-2">
         <h2 className="text-3xl font-bold text-white tracking-wider">Place Your Bets</h2>
-        <p className="text-muted-foreground">Minimum bet $10. Blackjack pays 3:2.</p>
+        <p className="text-muted-foreground">Minimum bet 10 Credits. Blackjack pays 3:2.</p>
       </div>
 
       <div className="bg-black/30 p-8 rounded-2xl border border-white/10 backdrop-blur-md flex flex-col gap-6 w-full max-w-md">
@@ -76,6 +82,13 @@ function BlackjackGameContent() {
              max={gameState.balance}
            />
         </div>
+
+        {notification && (
+          <div className="bg-destructive/10 border border-destructive/50 text-red-200 px-4 py-3 rounded-lg flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+            <AlertCircle className="w-5 h-5 text-destructive" />
+            <span className="text-sm font-medium">{notification}</span>
+          </div>
+        )}
 
         <Button 
           size="lg" 
@@ -118,6 +131,17 @@ function BlackjackGameContent() {
       {/* Main Game Area */}
       <main className="flex-1 relative flex flex-col items-center justify-center p-4 gap-8 overflow-hidden">
         
+        {notification && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-none">
+            <div className="bg-destructive/90 text-white px-6 py-3 rounded-full font-bold shadow-[0_0_20px_rgba(239,68,68,0.5)] flex items-center gap-3 border border-red-400/50 backdrop-blur-md">
+              <div className="bg-white/20 p-1 rounded-full">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <span className="text-sm md:text-base tracking-wide">{notification}</span>
+            </div>
+          </div>
+        )}
+
         {gameState.status === 'betting' ? (
           renderBettingPhase()
         ) : (
@@ -149,10 +173,10 @@ function BlackjackGameContent() {
             </div>
 
             {/* Info / Result / AI Message */}
-            <div className="h-24 flex flex-col items-center justify-center gap-2">
+            <div className="flex flex-col items-center justify-center gap-3 min-h-[6rem]">
               {gameState.message && (
                  <div className={`
-                    px-8 py-3 rounded-full border backdrop-blur-md animate-in fade-in zoom-in duration-300
+                    px-8 py-2 rounded-full border backdrop-blur-md animate-in fade-in zoom-in duration-300
                     ${gameState.backendStatus === 'WON' || gameState.backendStatus === 'BLACKJACK' 
                       ? 'bg-green-500/20 border-green-500 text-green-200' 
                       : gameState.backendStatus === 'LOST' 
@@ -164,19 +188,29 @@ function BlackjackGameContent() {
                     </span>
                  </div>
               )}
+
+              {gameState.status === 'playing' && gameState.feedback && (
+                <div className="animate-in slide-in-from-bottom-2 fade-in duration-500">
+                  <span className="text-cyan-300 font-medium text-sm md:text-base bg-cyan-950/40 px-4 py-1 rounded-md border border-cyan-500/30">
+                    💡 {gameState.feedback}
+                  </span>
+                </div>
+              )}
               
-              {/* AI Probability Insight */}
               {gameState.status === 'playing' && gameState.probabilities && (
-                <div className="flex gap-4 text-xs font-mono text-muted-foreground/80 bg-black/20 px-4 py-1.5 rounded-full border border-white/5">
+                <div className="flex gap-4 text-xs font-mono text-muted-foreground/80 bg-black/40 px-4 py-1.5 rounded-full border border-white/10 mt-1">
                   <div className="flex items-center gap-1.5">
                     <BrainCircuit className="w-3 h-3 text-cyan-400" />
-                    <span>AI Insights:</span>
+                    <span className="text-cyan-100">AI Odds:</span>
                   </div>
-                  <span className={(gameState.probabilities.bustIfHit ?? 0) > 50 ? "text-red-400" : "text-green-400"}>
-                    Bust Risk: {(gameState.probabilities.bustIfHit ?? 0).toFixed(1)}%
+
+                  <span className={(gameState.probabilities['bustChance'] ?? 0) > 50 ? "text-red-400" : "text-emerald-400"}>
+                    Bust: {(gameState.probabilities['bustChance'] ?? 0).toFixed(1)}%
                   </span>
-                  <span className="text-white/60">|</span>
-                  <span>Win Chance: {(gameState.probabilities.winChance ?? 0).toFixed(1)}%</span>
+                  <span className="text-white/20">|</span>
+                  <span className={(gameState.probabilities['winChance'] ?? 0) > 50 ? "text-emerald-400" : "text-yellow-400"}>
+                    Win: {(gameState.probabilities['winChance'] ?? 0).toFixed(1)}%
+                  </span>
                 </div>
               )}
             </div>
@@ -288,31 +322,26 @@ function BlackjackGameContent() {
                 </Button>
 
                 <div className="relative w-full">
-                  {/* Notification Popup for Errors */}
-                  <div className={`
-                    absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-50
-                    w-max max-w-[250px]
-                    transition-all duration-200 ease-out
-                    ${notification 
-                      ? 'opacity-100 translate-y-0 scale-100' 
-                      : 'opacity-0 translate-y-2 scale-95 pointer-events-none'}
-                  `}>
-                    <div className="bg-destructive text-destructive-foreground text-xs font-bold px-4 py-2 rounded-lg shadow-xl border border-red-400/50 flex flex-col items-center text-center">
-                      <span className="uppercase tracking-wider mb-0.5">Alert</span>
-                      <span className="font-normal opacity-90">{notification}</span>
-                    </div>
-                  </div>
+                  {gameState.playerHand.length === 2 && 
+                   getValue(gameState.playerHand[0].rank) !== getValue(gameState.playerHand[1].rank) && (
+                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 z-40 w-max pointer-events-none">
+                       <div className="bg-black/80 backdrop-blur text-white/70 text-[10px] uppercase tracking-widest font-bold px-3 py-1.5 rounded-full border border-white/10 shadow-lg flex items-center gap-1.5">
+                         <Info className="w-3 h-3 text-white/50" />
+                         Match cards to split
+                       </div>
+                     </div>
+                   )}
 
                   <Button 
                     onClick={split}
                     disabled={
                       isProcessing || 
                       gameState.playerHand.length !== 2 || 
-                      gameState.playerHand[0].rank !== gameState.playerHand[1].rank ||
-                      gameState.splitHand.length > 0
+                      getValue(gameState.playerHand[0].rank) !== getValue(gameState.playerHand[1].rank) ||
+                      gameState.splitHand.length > 0 
                     } 
                     variant="outline"
-                    className="w-full h-14 font-bold text-lg border-2 bg-transparent text-white hover:bg-white/10 hover:text-white gap-2 transition-colors disabled:opacity-50"
+                    className="w-full h-14 font-bold text-lg border-2 bg-transparent text-white hover:bg-white/10 hover:text-white gap-2 transition-colors disabled:opacity-50" 
                   >
                     <Layers className="w-5 h-5" /> SPLIT
                   </Button>

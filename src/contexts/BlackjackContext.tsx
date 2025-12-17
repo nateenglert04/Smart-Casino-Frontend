@@ -72,11 +72,9 @@ export function BlackjackProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Helper to parse backend response into UI state
   const updateGameState = (response: BlackjackGameResponse) => {
-    const isFinished = ['WON', 'LOST', 'PUSH', 'BLACKJACK'].includes(response.gameState);
+    const isFinished = ['WON', 'LOST', 'PUSH', 'BLACKJACK', 'PARTIAL_WIN'].includes(response.gameState);
     
-    // Determine balance 
     const newBalance = response.newBalance ?? response.remainingBalance ?? response.userBalance ?? gameState.balance;
 
     setGameState(prev => ({
@@ -96,6 +94,7 @@ export function BlackjackProvider({ children }: { children: ReactNode }) {
       
       splitHand: response.splitHand ? response.splitHand.map(c => mapCardData(c)) : [],
       splitScore: response.splitValue || 0,
+      
       activeHandIndex: response.activeHandIndex ?? null,
 
       balance: newBalance,
@@ -115,6 +114,11 @@ export function BlackjackProvider({ children }: { children: ReactNode }) {
     try {
       const response = await blackjackService.startGame(betAmount);
       updateGameState(response);
+      
+      if (response.playerValue === 21 && response.gameState === 'IN_PROGRESS') {
+        const standResponse = await blackjackService.stand(response.gameId);
+        updateGameState(standResponse);
+      }
     } catch (error: any) {
       showNotification(error.response?.data?.error || "Failed to start game");
     } finally {
@@ -122,23 +126,39 @@ export function BlackjackProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleAction = async (actionFn: (id: number) => Promise<BlackjackGameResponse>) => {
-    if (!gameState.gameId) return;
+  const handleAction = async (
+    actionFn: (id: number) => Promise<BlackjackGameResponse>
+  ): Promise<BlackjackGameResponse | null> => {
+    if (!gameState.gameId) return null;
     setIsProcessing(true);
     try {
       const response = await actionFn(gameState.gameId);
       updateGameState(response);
+      return response;
     } catch (error: any) {
       showNotification(error.response?.data?.error || "Action failed");
+      return null;
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const hit = () => handleAction(blackjackService.hit.bind(blackjackService));
-  const stand = () => handleAction(blackjackService.stand.bind(blackjackService));
-  const doubleDown = () => handleAction(blackjackService.doubleDown.bind(blackjackService));
-  const split = () => handleAction(blackjackService.split.bind(blackjackService));
+  const hit = async () => {
+    const response = await handleAction(blackjackService.hit.bind(blackjackService));
+    
+    if (response && response.playerValue === 21 && response.gameState === 'IN_PROGRESS') {
+      try {
+        const standResponse = await blackjackService.stand(response.gameId);
+        updateGameState(standResponse);
+      } catch (err) {
+        console.error("Auto-stand failed", err);
+      }
+    }
+  };
+
+  const stand = async () => { await handleAction(blackjackService.stand.bind(blackjackService)); };
+  const doubleDown = async () => { await handleAction(blackjackService.doubleDown.bind(blackjackService)); };
+  const split = async () => { await handleAction(blackjackService.split.bind(blackjackService)); };
 
   const resetGame = () => {
     setGameState(prev => ({
@@ -150,18 +170,15 @@ export function BlackjackProvider({ children }: { children: ReactNode }) {
 
   const refreshStats = async () => {
     try {
-      // Just fetching to update balance if needed, or active games
       const active = await blackjackService.getActiveGames();
-      if (active.count > 0) {
-        // Logic to resume could go here
-        // For now, we just ensure balance is updated via stats check if needed
+      if (active && active.count > 0 && active.activeGames.length > 0) {
+        const mostRecentGame = active.activeGames[0];
+        console.log("Resuming active game:", mostRecentGame.gameId);
+        updateGameState(mostRecentGame);
+        showNotification("Game Session Resumed");
       }
-      // Assuming you might add a getBalance endpoint or rely on stats
-      const stats = await blackjackService.getStats();
-      // If stats included balance, we'd update it here. 
-      // For now we rely on game actions to return balance.
     } catch (err) {
-      console.error(err);
+      console.error("Failed to check active games:", err);
     }
   };
 

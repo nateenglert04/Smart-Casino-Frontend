@@ -1,5 +1,5 @@
 import { SmartCasinoClient } from '../services/SmartCasinoClient';
-import type { Suit, Rank } from '../components/PlayingCard'; // Adjust path as needed
+import type { Suit, Rank } from '../components/PlayingCard'; 
 
 export interface BackendCard {
   cardId: number;
@@ -9,11 +9,7 @@ export interface BackendCard {
   faceUp: boolean;
 }
 
-export interface Probabilities {
-  bustIfHit: number;
-  winChance: number;
-  pushChance: number;
-}
+export type Probabilities = Record<string, number>;
 
 export interface BlackjackGameResponse {
   gameId: number;
@@ -29,29 +25,14 @@ export interface BlackjackGameResponse {
   feedback: string;
   probabilities: Probabilities;
   message?: string;
-  blackjack?: boolean;
   splitHand?: BackendCard[];
   splitValue?: number;
   activeHandIndex?: number;
 }
 
 export interface ActiveGamesResponse {
-  activeGames: {
-    gameId: number;
-    betAmount: number;
-    playerHand: BackendCard[];
-    gameState: string;
-  }[];
+  activeGames: BlackjackGameResponse[];
   count: number;
-}
-
-export interface BlackjackStats {
-  gamesPlayed: number;
-  gamesWon: number;
-  winPercentage: number;
-  totalWinnings: number;
-  bestStreak: number;
-  recentGames: any[];
 }
 
 export const mapCardData = (backendCard: BackendCard): { suit: Suit; rank: Rank } => {
@@ -118,12 +99,6 @@ class BlackjackService {
   // Get active games to resume session
   async getActiveGames(): Promise<ActiveGamesResponse> {
     const response = await this.api.get<ActiveGamesResponse>(`${this.baseUrl}/active`);
-    return response.data;
-  }
-
-  // Get User Stats
-  async getStats(): Promise<BlackjackStats> {
-    const response = await this.api.get<BlackjackStats>(`${this.baseUrl}/stats`);
     return response.data;
   }
 }
