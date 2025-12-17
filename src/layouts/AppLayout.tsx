@@ -10,6 +10,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { QrAccessModal } from '../components/QrModal';
 import { useTheme } from '../contexts/ThemeContext';
 import { useGamification } from '../contexts/GamificationContext';
+import { ExperiencePopUp } from '../components/ExperiencePopUp';
 
 export default function AppLayout() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -232,6 +233,8 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      <ExperiencePopUp />
     </div>
   );
 }

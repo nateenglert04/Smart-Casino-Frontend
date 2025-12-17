@@ -11,6 +11,8 @@ import GamesHome from "./pages/Games/GamesHomePage";
 import BlackjackPage from "./pages/Games/BlackjackPage";
 import ResetPasswordPage from "./pages/Register/ResetPasswordPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import CoursesHomePage from "./pages/Courses/CoursesHomePage";
+import LessonViewer from "./pages/Courses/LessonViewer";
 
 function App() {
 
@@ -35,9 +37,12 @@ function App() {
                     <Route path="blackjack" element={<BlackjackPage />} />
                   </Route>
                   <Route path="leaderboard" element={<LeaderboardPage />} />
+                  <Route path="lessons">
+                    <Route index element={<CoursesHomePage />} />
+                    <Route path=":courseId" element={<LessonViewer />} />
+                  </Route>
                   {/*Will need to implement these pages*/}
-                  {/*<Route path="lessons" element={<Lessons />} />
-                  <Route path="account" element={<Account />} />*/}
+                  {/*<Route path="account" element={<Account />} />*/}
                 </Route>
               </Route>
 
