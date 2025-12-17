@@ -1,5 +1,12 @@
 import { SmartCasinoClient } from './SmartCasinoClient';
 
+export type User = {
+  id: number;
+  username: string;
+  email: string;
+  balance: number;
+}
+
 export const AuthenticationService = {
   
   getClient: () => SmartCasinoClient.getInstance().client,

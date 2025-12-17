@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Outlet, NavLink, Link } from 'react-router-dom';
-import { LayoutDashboard, Spade, BookOpen, Trophy, Settings, Menu, User as UserIcon, LogOut, Wallet, Laptop, Sun, Moon, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, Spade, BookOpen, Trophy, Settings, Menu, User as UserIcon, LogOut, Wallet, Laptop, Sun, Moon, ChevronLeft, Crown } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '../components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -9,12 +9,14 @@ import smartCasinoLogo from '../assets/smart-casino.png';
 import { useAuth } from '../contexts/AuthContext';
 import { QrAccessModal } from '../components/QrModal';
 import { useTheme } from '../contexts/ThemeContext';
+import { useGamification } from '../contexts/GamificationContext';
 
 export default function AppLayout() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const { user, logout } = useAuth();
   const { setTheme } = useTheme();
+  const { rankData } = useGamification();
 
   const getInitials = (name: string) => name ? name.substring(0, 2).toUpperCase() : 'SC';
 
@@ -90,7 +92,43 @@ export default function AppLayout() {
 
           {/* User Account Dropdown */}
           <div className="flex items-center gap-4 ml-auto">
+
+            {/* User Rank */}
+            {rankData && (
+              <div className="hidden md:flex items-center gap-3 px-3 py-1.5 bg-amber-500/10 rounded-full border border-amber-500/20 mr-2 relative group cursor-help">
+                <div className="flex items-center gap-2">
+                   <Crown className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                   <div className="flex flex-col leading-none">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Rank {rankData.currentRank}</span>
+                      <span className="text-sm font-bold text-foreground">Lvl {rankData.currentLevel}</span>
+                   </div>
+                </div>
+                
+                <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden ml-1">
+                  <div 
+                    className="h-full bg-amber-500 transition-all duration-500" 
+                    style={{ width: `${rankData.levelProgressPercent}%` }} 
+                  />
+                </div>
+
+                <div className="absolute top-full right-0 mt-2 p-3 bg-popover border text-popover-foreground text-xs rounded shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity w-48 z-50">
+                   <div className="flex justify-between mb-1">
+                     <span>Total XP:</span>
+                     <span className="font-bold">{rankData.totalXP}</span>
+                   </div>
+                   <div className="flex justify-between mb-2">
+                     <span>Next Level:</span>
+                     <span className="font-mono">{rankData.xpToNextLevel} XP</span>
+                   </div>
+                   <div className="w-full bg-secondary h-1.5 rounded-full overflow-hidden">
+                      <div className="bg-primary h-full" style={{ width: `${rankData.levelProgressPercent}%` }} />
+                   </div>
+                </div>
+              </div>
+            )}
+
             <QrAccessModal />
+
             <div className="hidden md:flex items-center px-3 py-1.5 bg-sidebar-primary/10 rounded-full border border-sidebar-primary/20">
                 <Wallet className="w-4 h-4 mr-2 text-sidebar-primary" />
                 <span className="font-bold text-sm text-foreground">

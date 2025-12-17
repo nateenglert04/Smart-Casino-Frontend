@@ -1,11 +1,18 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Spade, BookOpen, Trophy, Wallet } from 'lucide-react';
+import { ArrowRight, Spade, BookOpen, Trophy, Wallet, Activity } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../contexts/AuthContext';
+import { useGamification } from '../contexts/GamificationContext';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { rankData, loading } = useGamification();
+
+  const formatWinRate = (rate: number | undefined) => {
+    if (rate === undefined || rate === null) return "0%";
+    return `${rate.toFixed(1)}%`;
+  };
 
   return (
     <div className="space-y-8 fade-in-10">
@@ -107,19 +114,29 @@ export default function Dashboard() {
         <Card className="col-span-3 bg-muted/40">
            <CardHeader>
             <CardTitle>Your Stats</CardTitle>
-            <CardDescription>This week</CardDescription>
+            <CardDescription>Lifetime Stats</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                    <span className="text-sm">Win Rate</span>
-                    <span className="font-bold text-sidebar-primary">58%</span>
+            {loading ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <Activity className="w-4 h-4 animate-spin" /> Loading stats...
                 </div>
-                <div className="flex items-center justify-between">
-                    <span className="text-sm">Hands Played</span>
-                    <span className="font-bold">142</span>
+            ) : (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm">Win Rate</span>
+                        <span className="font-bold text-sidebar-primary">
+                            {formatWinRate(rankData?.winRate)}
+                        </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm">Hands Played</span>
+                        <span className="font-bold">
+                            {(rankData?.gamesPlayed ?? 0).toLocaleString()}
+                        </span>
+                    </div>
                 </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>
