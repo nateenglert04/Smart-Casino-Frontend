@@ -12,6 +12,7 @@ export interface LeaderboardEntry {
   totalWinnings: number;
   balance: number;
   gameType: string;
+  lessonsCompleted: number;
 }
 
 export interface LeaderboardResponse {

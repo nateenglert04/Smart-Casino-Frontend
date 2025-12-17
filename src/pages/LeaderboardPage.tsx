@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, TrendingUp, DollarSign, Crown, Activity, Spade, LayoutGrid, Dices, RefreshCw, Info, ChevronUp, Filter } from 'lucide-react';
+import { Trophy, Medal, TrendingUp, DollarSign, Crown, Activity, Spade, LayoutGrid, Dices, RefreshCw, Info, ChevronUp, Filter, BookOpen } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
 import { Card } from '../components/ui/card';
@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { leaderboardService, type LeaderboardEntry, type RankInfo, type UserRankResponse } from '../services/LeaderboardService';
 import { useAuth } from '../contexts/AuthContext';
 
-type SortOption = 'xp' | 'balance' | 'winnings' | 'winRate' | 'games';
+type SortOption = 'xp' | 'balance' | 'winnings' | 'winRate' | 'games' | 'lessons';
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
@@ -58,6 +58,7 @@ export default function LeaderboardPage() {
         case 'winnings': return b.totalWinnings - a.totalWinnings;
         case 'winRate': return b.winRate - a.winRate;
         case 'games': return b.gamesPlayed - a.gamesPlayed;
+        case 'lessons': return b.lessonsCompleted - a.lessonsCompleted;
         case 'xp': default: return b.xp - a.xp;
       }
     });
@@ -128,6 +129,7 @@ export default function LeaderboardPage() {
       <div className="col-span-5 md:col-span-2 text-right font-mono font-medium">
         {sortBy === 'xp' && <span className="text-amber-500">{player.xp.toLocaleString()} XP</span>}
         {sortBy === 'balance' && <span className="text-green-500">{player.balance} Credits</span>}
+        {sortBy === 'lessons' && <span className="text-emerald-500">{player.lessonsCompleted} Lessons</span>}
         {sortBy === 'winnings' && <span className="text-blue-400">{player.totalWinnings} Credits</span>}
         {sortBy === 'winRate' && <span className="text-purple-400">{player.winRate.toFixed(1)}%</span>}
       </div>
@@ -219,6 +221,7 @@ export default function LeaderboardPage() {
           {[
             { id: 'xp', label: 'Top XP', icon: Crown },
             { id: 'balance', label: 'Richest', icon: DollarSign },
+            { id: 'lessons', label: 'Scholars', icon: BookOpen },
             { id: 'winnings', label: 'Total Winnings', icon: Trophy },
             { id: 'winRate', label: 'Win Rate', icon: TrendingUp },
           ].map((opt) => (
