@@ -13,6 +13,8 @@ import ResetPasswordPage from "./pages/Register/ResetPasswordPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import CoursesHomePage from "./pages/Courses/CoursesHomePage";
 import LessonViewer from "./pages/Courses/LessonViewer";
+import AccountPage from "./pages/AccountPage";
+import SettingsPage from "./pages/SettingsPage";
 
 function App() {
 
@@ -41,8 +43,8 @@ function App() {
                     <Route index element={<CoursesHomePage />} />
                     <Route path=":courseId" element={<LessonViewer />} />
                   </Route>
-                  {/*Will need to implement these pages*/}
-                  {/*<Route path="account" element={<Account />} />*/}
+                  <Route path="account" element={<AccountPage />} />
+                  <Route path="settings" element={<SettingsPage />} />
                 </Route>
               </Route>
 
